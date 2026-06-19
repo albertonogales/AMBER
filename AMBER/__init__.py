@@ -16,14 +16,14 @@ vesanto_size       : Vesanto & Alhoniemi (2000) map-size heuristic
 AVAILABLE_DISTANCES: list of supported BMU distance names
 """
 
-from .map import Map, vesanto_size
 from .classification import Classification
-from .visualization import Visualization
-from .temporal_map import TemporalMap
-from .temporal_analysis import TemporalAnalysis
-from .features import FeatureExtractor
 from .distances import AVAILABLE_DISTANCES
+from .features import FeatureExtractor
 from .iterativesom import IterativeSOM
+from .map import Map, vesanto_size
+from .temporal_analysis import TemporalAnalysis
+from .temporal_map import TemporalMap
+from .visualization import Visualization
 
 __version__ = "2.1.0"
 __author__ = "Alberto Nogales, Álvaro José García-Tejedor"

@@ -1,13 +1,11 @@
+import matplotlib.patches as mpatches
 import numpy as np
 import plotly.figure_factory as ff
 import plotly.graph_objs as go
 from IPython.display import display
 from matplotlib import pyplot as plt
-from matplotlib import cm
 from matplotlib.colors import to_rgba
-import matplotlib.patches as mpatches
-import plotly.io as pio
-from plotly.offline import iplot, plot
+from plotly.offline import iplot
 
 
 class Visualization:
@@ -359,8 +357,10 @@ class Visualization:
                     ax.add_patch(plt.Rectangle((c - 0.5, r - 0.5), 1, 1,
                                                color='#e8e8e8', zorder=1))
 
-        ax.set_xticks(range(k)); ax.set_xlabel('Neuron column', fontsize=11)
-        ax.set_yticks(range(k)); ax.set_ylabel('Neuron row',    fontsize=11)
+        ax.set_xticks(range(k))
+        ax.set_xlabel('Neuron column', fontsize=11)
+        ax.set_yticks(range(k))
+        ax.set_ylabel('Neuron row',    fontsize=11)
         ax.grid(True, linewidth=0.5, color='white', zorder=0)
 
         # legend above axes (2 rows if many classes)
@@ -438,7 +438,8 @@ class Visualization:
                 w  = som.weights[r, c]
                 if (r, c) in majority:
                     col = col_map[majority[(r, c)]]
-                    bg  = list(to_rgba(col)); bg[3] = 0.18
+                    bg = list(to_rgba(col))
+                    bg[3] = 0.18
                     ax.set_facecolor(bg)
                     n = counts[(r, c)]
                 else:

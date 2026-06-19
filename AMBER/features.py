@@ -21,8 +21,8 @@ import numpy as np
 _trapz = getattr(np, 'trapezoid', None) or getattr(np, 'trapz')
 
 try:
-    from scipy import stats as _sp_stats
     from scipy import signal as _sp_signal
+    from scipy import stats as _sp_stats
     _SCIPY = True
 except ImportError:
     _SCIPY = False

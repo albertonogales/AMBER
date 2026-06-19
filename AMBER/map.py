@@ -6,7 +6,8 @@ from typing import Optional, Tuple
 
 import numpy as np
 from tqdm.auto import tqdm
-from .distances import SIGNAL_DISTANCE_MATRIX, GRID_DISTANCE, AVAILABLE_DISTANCES
+
+from .distances import AVAILABLE_DISTANCES, GRID_DISTANCE, SIGNAL_DISTANCE_MATRIX
 
 logger = logging.getLogger(__name__)
 

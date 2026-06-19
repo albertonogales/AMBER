@@ -38,10 +38,9 @@ import logging
 from typing import Optional, Tuple
 
 import numpy as np
-from tqdm.auto import tqdm
 
-from .map import Map, vesanto_size
 from .distances import SIGNAL_DISTANCE_MATRIX, euclidean_distance_matrix
+from .map import Map, vesanto_size
 
 logger = logging.getLogger(__name__)
 

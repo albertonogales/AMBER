@@ -5,9 +5,10 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-from .map import Map
-from .distances import euclidean_distance, SIGNAL_DISTANCE_MATRIX, SIGNAL_DISTANCE_SCALAR
 from tqdm.auto import tqdm
+
+from .distances import SIGNAL_DISTANCE_SCALAR, euclidean_distance
+from .map import Map
 
 logger = logging.getLogger(__name__)
 
@@ -177,10 +178,14 @@ class Classification:
         for i in range(k):
             for j in range(k):
                 neighbours = []
-                if i > 0:     neighbours.append(u[2*i-1, 2*j])
-                if i < k-1:   neighbours.append(u[2*i+1, 2*j])
-                if j > 0:     neighbours.append(u[2*i,   2*j-1])
-                if j < k-1:   neighbours.append(u[2*i,   2*j+1])
+                if i > 0:
+                    neighbours.append(u[2*i-1, 2*j])
+                if i < k-1:
+                    neighbours.append(u[2*i+1, 2*j])
+                if j > 0:
+                    neighbours.append(u[2*i,   2*j-1])
+                if j < k-1:
+                    neighbours.append(u[2*i,   2*j+1])
                 u[2*i, 2*j] = np.mean(neighbours) if neighbours else 0.0
 
         self.umatriz = u
