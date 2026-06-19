@@ -25,7 +25,7 @@ from .temporal_analysis import TemporalAnalysis
 from .temporal_map import TemporalMap
 from .visualization import Visualization
 
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 __author__ = "Alberto Nogales, Álvaro José García-Tejedor"
 __email__ = "alberto.nogales@uah.es"
 __license__ = "GPL-3.0"

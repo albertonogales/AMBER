@@ -5,10 +5,13 @@ sys.path.insert(0, os.path.abspath('..'))
 
 project   = 'AMBER'
 author    = 'Alberto Nogales, Álvaro José García-Tejedor'
-copyright = '2024, CEIEC — Universidad Francisco de Vitoria'
+copyright = '2026, IERU — Universidad de Alcalá'
 
-import AMBER
-release = AMBER.__version__
+try:
+    import AMBER
+    release = AMBER.__version__
+except Exception:
+    release = '2.2.0'
 version = release
 
 extensions = [
