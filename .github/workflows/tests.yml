@@ -33,12 +33,13 @@ jobs:
       - name: Type-check (mypy)
         run: mypy AMBER/ --ignore-missing-imports --no-strict-optional
 
-      - name: Run tests
-        run: pytest --tb=short -q
+      - name: Run tests with coverage
+        run: pytest --tb=short -q --cov=AMBER --cov-report=xml --cov-report=term-missing
 
-      - name: Upload coverage report
+      - name: Upload coverage to Codecov
         if: matrix.python-version == '3.12'
-        uses: actions/upload-artifact@v4
+        uses: codecov/codecov-action@v4
         with:
-          name: coverage-html
-          path: coverage_html/
+          files: coverage.xml
+          flags: unittests
+          fail_ci_if_error: false

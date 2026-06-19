@@ -6,7 +6,7 @@ It covers the full workflow — data normalisation, map training, classification
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Tests](https://github.com/albertonogales/AMBER/actions/workflows/tests.yml/badge.svg)](https://github.com/albertonogales/AMBER/actions/workflows/tests.yml)
-[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)]()
+[![Coverage](https://codecov.io/gh/albertonogales/AMBER/branch/main/graph/badge.svg)](https://codecov.io/gh/albertonogales/AMBER)
 [![Docs](https://readthedocs.org/projects/amber-som/badge/?version=latest)](https://amber-som.readthedocs.io/en/latest/)
 
 ---
