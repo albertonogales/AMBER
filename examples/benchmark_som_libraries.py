@@ -1,5 +1,5 @@
 """
-Execution-time benchmark: AMBER vs other Python SOM libraries.
+Execution-time benchmark: Python SOM libraries.
 
 Compares training time across three dataset sizes (small / medium / large)
 with a fixed number of weight-update iterations for each.  Results are
@@ -7,10 +7,9 @@ printed as a Markdown table suitable for inclusion in a paper or README.
 
 Libraries compared
 ------------------
-- AMBER      (this work)   — https://github.com/albertonogales/AMBER
-- GEMA       (predecessor) — https://github.com/ufvceiec/GEMA
-- MiniSom    (Vettigli 2018) — https://github.com/JustGlowing/minisom
-- sklearn-som (Moran 2021)  — https://github.com/rileypsmith/sklearn-som
+- GEMA        (García-Tejedor & Nogales, 2022) — https://github.com/ufvceiec/GEMA
+- MiniSom     (Vettigli, 2018)                 — https://github.com/JustGlowing/minisom
+- sklearn-som (Moran, 2021)                    — https://github.com/rileypsmith/sklearn-som
 
 Note: SomPy is omitted because it is no longer maintained and incompatible
 with current NumPy / Python versions.
@@ -38,9 +37,9 @@ warnings.filterwarnings("ignore")
 # ── Benchmark configuration ─────────────────────────────────────────────────
 # (label, N_samples, D_features, map_side, n_iterations)
 CONFIGS = [
-    ("Small\n(500×4, 5×5, 1k iter)",    500,    4,  5,  1_000),
-    ("Medium\n(2000×10, 8×8, 5k iter)", 2_000,  10,  8,  5_000),
-    ("Large\n(5000×20, 10×10, 10k iter)", 5_000, 20, 10, 10_000),
+    ("Small\n(500×4, 5×5, 1k iter)",      500,    4,  5,  1_000),
+    ("Medium\n(2000×10, 8×8, 5k iter)",  2_000,  10,  8,  5_000),
+    ("Large\n(5000×20, 10×10, 10k iter)", 5_000,  20, 10, 10_000),
 ]
 REPS = 3   # best-of-N to reduce scheduling noise
 SEED = 42
@@ -58,11 +57,6 @@ def best_of(fn: Callable, reps: int = REPS) -> float:
 
 
 # ── Library wrappers ─────────────────────────────────────────────────────────
-def run_amber(data: np.ndarray, size: int, period: int) -> None:
-    import AMBER
-    AMBER.Map(data=data, size=size, period=period, random_seed=SEED)
-
-
 def run_gema(data: np.ndarray, size: int, period: int) -> None:
     import GEMA
     GEMA.Map(data=data, size=size, period=period)
@@ -84,7 +78,6 @@ def run_sklearn_som(data: np.ndarray, size: int, period: int) -> None:
 
 
 LIBRARIES = {
-    "AMBER":       run_amber,
     "GEMA":        run_gema,
     "MiniSom":     run_minisom,
     "sklearn-som": run_sklearn_som,
@@ -107,12 +100,11 @@ for lib_name, fn in LIBRARIES.items():
         print(f"{lib_name:<14} {short_label}: {t:.3f}s")
 
 # ── Print Markdown table ─────────────────────────────────────────────────────
-col_labels = [c[0].split("\n")[0] for c in CONFIGS]
+col_labels  = [c[0].split("\n")[0] for c in CONFIGS]
 col_details = [c[0].split("\n")[1] for c in CONFIGS]
 
-header_row   = "| Library       | " + " | ".join(col_labels) + " |"
-detail_row   = "| :---          | " + " | ".join(f"*{d}*" for d in col_details) + " |"
-sep_row      = "| :---          | " + " | ".join(":---:" for _ in col_labels) + " |"
+header_row = "| Library       | " + " | ".join(col_labels) + " |"
+sep_row    = "| :---          | " + " | ".join(":---:" for _ in col_labels) + " |"
 
 print("\n")
 print("## SOM Library Execution-Time Comparison (seconds, best of 3 runs)\n")
@@ -128,7 +120,7 @@ for lib_name, timings in results.items():
 print()
 print(
     "_Measured on a single CPU core (Apple M-series). "
-    "AMBER and GEMA use an online (one-sample-per-step) update rule; "
+    "GEMA uses an online (one-sample-per-step) update rule; "
     "MiniSom uses the same rule. sklearn-som uses full-batch epochs, "
     "so the iteration count is converted to epochs = iterations / N. "
     "Best-of-3 wall-clock time; lower is better._"
