@@ -208,7 +208,9 @@ If you use AMBER in your research, please cite the companion paper:
 @article{nogales2026amber,
   title   = {{AMBER}: Autoassociative Map Builder for tEmporal Representations —
              a Python library for Self-Organizing Maps},
-  author  = {Nogales, Alberto and Garc{\'i}a-Tejedor, {\'A}lvaro Jos{\'e}},
+  author  = {Nogales, Alberto and Sicilia, Miguel {\'A}ngel and
+             Garc{\'i}a Barriocanal, Elena and Mora Cantallops, Mar{\c{c}}al and
+             Ballesteros Rodr{\'i}guez, Alberto},
   journal = {Information Sciences},
   year    = {2026},
   note    = {Under review}
