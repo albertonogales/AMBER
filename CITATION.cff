@@ -16,7 +16,18 @@ authors:
     given-names: "Alberto"
     affiliation: "Universidad de Alcalá (UAH), IERU Research Group"
     email: "alberto.nogales@uah.es"
-    orcid: ""
+  - family-names: "Sicilia"
+    given-names: "Miguel Ángel"
+    affiliation: "Universidad de Alcalá (UAH), IERU Research Group"
+  - family-names: "García Barriocanal"
+    given-names: "Elena"
+    affiliation: "Universidad de Alcalá (UAH), IERU Research Group"
+  - family-names: "Mora Cantallops"
+    given-names: "Marçal"
+    affiliation: "Universidad de Alcalá (UAH), IERU Research Group"
+  - family-names: "Ballesteros Rodríguez"
+    given-names: "Alberto"
+    affiliation: "Universidad de Alcalá (UAH), IERU Research Group"
 keywords:
   - self-organizing maps
   - unsupervised learning

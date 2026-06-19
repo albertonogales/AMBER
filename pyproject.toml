@@ -10,6 +10,10 @@ readme = "README.md"
 license = "GPL-3.0-only"
 authors = [
     {name = "Alberto Nogales", email = "alberto.nogales@uah.es"},
+    {name = "Miguel Ángel Sicilia"},
+    {name = "Elena García Barriocanal"},
+    {name = "Marçal Mora Cantallops"},
+    {name = "Alberto Ballesteros Rodríguez"},
 ]
 requires-python = ">=3.9"
 keywords = [
