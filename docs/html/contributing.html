@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contributing — AMBER</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+</head>
+<body>
+<aside class="sidebar">
+  <a class="sidebar-logo" href="index.html">
+    <div class="sidebar-logo-icon">🔶</div>
+    <div class="sidebar-logo-text">
+      <span class="name">AMBER</span>
+      <span class="version">v2.0.0</span>
+    </div>
+  </a>
+  <div class="sidebar-section">Getting Started</div>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="installation.html">Installation</a>
+  </nav>
+  <div class="sidebar-section">Documentation</div>
+  <nav>
+    <a href="user_guide.html">User Guide</a>
+    <a href="api_reference.html">API Reference</a>
+  </nav>
+  <div class="sidebar-section">Project</div>
+  <nav>
+    <a href="changelog.html">Changelog</a>
+    <a href="contributing.html" class="active">Contributing</a>
+  </nav>
+  <div class="sidebar-footer">
+    GPL-3.0 License<br>
+    IERU · Universidad de Alcalá<br>
+    <a href="mailto:alberto.nogales@uah.es">alberto.nogales@uah.es</a>
+  </div>
+</aside>
+<div class="main">
+<div class="content">
+
+  <div class="breadcrumb"><a href="index.html">AMBER</a> <span>›</span> Contributing</div>
+  <h1>Contributing</h1>
+  <p>Contributions are welcome — bug reports, documentation improvements, and new features.</p>
+
+  <div class="toc">
+    <strong>On this page</strong>
+    <ol>
+      <li><a href="#bugs">Reporting bugs</a></li>
+      <li><a href="#features">Requesting features</a></li>
+      <li><a href="#dev-setup">Development setup</a></li>
+      <li><a href="#pr">Submitting a pull request</a></li>
+      <li><a href="#distances">Adding a distance metric</a></li>
+      <li><a href="#norms">Adding a normalisation strategy</a></li>
+    </ol>
+  </div>
+
+  <h2 id="bugs">Reporting Bugs</h2>
+  <p>Open an issue on GitHub and include:</p>
+  <ul>
+    <li>AMBER version (<code>AMBER.__version__</code>)</li>
+    <li>Python version and OS</li>
+    <li>Minimal reproducible example</li>
+    <li>Full traceback</li>
+  </ul>
+
+  <h2 id="features">Requesting Features</h2>
+  <p>Open a GitHub issue with the label <em>enhancement</em>. Describe the use case and, if possible, the expected API.</p>
+
+  <h2 id="dev-setup">Development Setup</h2>
+<pre><code class="language-bash">git clone https://github.com/&lt;your-org&gt;/amber-som.git
+cd amber-som
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+pytest   # all 265 tests should pass
+</code></pre>
+
+  <h2 id="pr">Submitting a Pull Request</h2>
+  <ol>
+    <li>Fork the repository and create a feature branch: <code>git checkout -b feature/my-feature</code></li>
+    <li>Write tests for your changes — coverage should not decrease</li>
+    <li>Run <code>pytest</code> and confirm all tests pass</li>
+    <li>Add a changelog entry in <code>CHANGELOG.md</code></li>
+    <li>Open a pull request against <code>main</code></li>
+  </ol>
+
+  <h2 id="distances">Adding a Distance Metric</h2>
+  <p>All distances live in <code>AMBER/distances.py</code>. To add <code>my_distance</code>:</p>
+  <ol>
+    <li>Add a scalar function <code>my_distance(a, b) → float</code></li>
+    <li>Add a matrix function <code>my_distance_matrix(weights, pattern) → ndarray (rows, cols)</code></li>
+    <li>Register both in <code>SIGNAL_DISTANCE_MATRIX</code> dict</li>
+    <li>Add tests in <code>tests/test_distances.py</code></li>
+  </ol>
+<pre><code class="language-python"># AMBER/distances.py
+
+def my_distance(a, b):
+    ...
+
+def my_distance_matrix(weights, pattern):
+    ...
+
+SIGNAL_DISTANCE_MATRIX['my_distance'] = my_distance_matrix
+</code></pre>
+
+  <h2 id="norms">Adding a Normalisation Strategy</h2>
+  <p>Normalisation is handled inside <code>Map.__normalize(data, method)</code> in <code>AMBER/map.py</code>. Add a new <code>elif method == 'my_norm'</code> branch and update the error message listing available strategies.</p>
+
+  <div class="note">
+    <strong>Contact:</strong> For questions about the codebase, email <a href="mailto:alberto.nogales@uah.es">alberto.nogales@uah.es</a> (IERU, Universidad de Alcalá).
+  </div>
+
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</body>
+</html>

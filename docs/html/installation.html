@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Installation — AMBER</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+</head>
+<body>
+<aside class="sidebar">
+  <a class="sidebar-logo" href="index.html">
+    <div class="sidebar-logo-icon">🔶</div>
+    <div class="sidebar-logo-text">
+      <span class="name">AMBER</span>
+      <span class="version">v2.1.0</span>
+    </div>
+  </a>
+  <div class="sidebar-section">Getting Started</div>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="installation.html" class="active">Installation</a>
+  </nav>
+  <div class="sidebar-section">Documentation</div>
+  <nav>
+    <a href="user_guide.html">User Guide</a>
+    <a href="api_reference.html">API Reference</a>
+  </nav>
+  <div class="sidebar-section">Project</div>
+  <nav>
+    <a href="changelog.html">Changelog</a>
+    <a href="contributing.html">Contributing</a>
+  </nav>
+  <div class="sidebar-footer">
+    GPL-3.0 License<br>
+    IERU · Universidad de Alcalá<br>
+    <a href="mailto:alberto.nogales@uah.es">alberto.nogales@uah.es</a>
+  </div>
+</aside>
+<div class="main">
+<div class="content">
+
+  <div class="breadcrumb"><a href="index.html">AMBER</a> <span>›</span> Installation</div>
+  <h1>Installation</h1>
+  <p>AMBER requires <strong>Python 3.9 or later</strong>. It is tested on Linux, macOS, and Windows.</p>
+  <p>The package is distributed via <strong>PyPI</strong> using the modern <code>pyproject.toml</code> (PEP 517/518) build system — no legacy <code>setup.py</code> required.</p>
+
+  <div class="toc">
+    <strong>On this page</strong>
+    <ol>
+      <li><a href="#requirements">Requirements</a></li>
+      <li><a href="#core">Core install</a></li>
+      <li><a href="#extras">Optional extras</a></li>
+      <li><a href="#source">Install from source</a></li>
+      <li><a href="#verify">Verifying your install</a></li>
+      <li><a href="#dev">Developer install</a></li>
+    </ol>
+  </div>
+
+  <h2 id="requirements">Requirements</h2>
+  <p>The core library depends only on well-established scientific Python packages:</p>
+  <table>
+    <thead><tr><th>Package</th><th>Minimum version</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>numpy</code></td><td>≥ 1.21</td><td>Array operations and linear algebra throughout</td></tr>
+      <tr><td><code>pandas</code></td><td>≥ 1.3</td><td>Classification map and temporal analysis DataFrames</td></tr>
+      <tr><td><code>matplotlib</code></td><td>≥ 3.5</td><td>All static visualisations</td></tr>
+      <tr><td><code>plotly</code></td><td>≥ 5.0</td><td>Interactive heat maps and U-matrix</td></tr>
+      <tr><td><code>scipy</code></td><td>≥ 1.7</td><td>PCA weight initialisation, spectral features</td></tr>
+      <tr><td><code>scikit-learn</code></td><td>≥ 1.0</td><td>Normalisation helpers</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="core">Core Install</h2>
+  <pre><code class="language-bash">pip install amber-som</code></pre>
+
+  <h2 id="extras">Optional Extras</h2>
+
+  <h3>Spectral features</h3>
+  <p>Required only when using <code>FeatureExtractor</code> with frequency-domain features
+  (<code>spectral_power</code>, <code>dominant_frequency</code>, EEG band powers, etc.):</p>
+  <pre><code class="language-bash">pip install "amber-som[spectral]"</code></pre>
+
+  <h3>MFCC features</h3>
+  <p>Required only when using <code>FeatureExtractor</code> with <code>mfcc</code>:</p>
+  <pre><code class="language-bash">pip install "amber-som[mfcc]"
+# installs librosa and soundfile</code></pre>
+
+  <h3>All extras at once</h3>
+  <pre><code class="language-bash">pip install "amber-som[spectral,mfcc]"</code></pre>
+
+  <h2 id="source">Install from Source</h2>
+  <pre><code class="language-bash">git clone https://github.com/&lt;your-org&gt;/amber-som.git
+cd amber-som
+pip install -e .</code></pre>
+
+  <div class="note">
+    <strong>Notebooks:</strong> each example notebook contains a path-fix cell at the top so it works even without <code>pip install</code> — just open it from the <code>examples/</code> folder.
+  </div>
+
+  <h2 id="verify">Verifying Your Install</h2>
+  <pre><code class="language-python">import AMBER
+print(AMBER.__version__)          # 2.1.0
+print(AMBER.AVAILABLE_DISTANCES)  # ['euclidean', 'manhattan', ...]</code></pre>
+
+  <h2 id="dev">Developer Install</h2>
+  <pre><code class="language-bash"># 1. Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate    # Windows: .venv\Scripts\activate
+
+# 2. Install with dev dependencies
+pip install -e ".[dev]"
+# — or —
+pip install -r requirements-dev.txt && pip install -e .
+
+# 3. Run the test suite
+pytest                                        # 315 tests
+pytest --cov=AMBER --cov-report=term-missing  # with coverage report</code></pre>
+
+  <div class="tip">
+    <strong>Tip:</strong> All 315 tests use synthetic data — no real datasets or internet access required.
+  </div>
+
+  <div class="note">
+    <strong>Next:</strong> Jump to the <a href="user_guide.html">User Guide</a> to start using AMBER.
+  </div>
+
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</body>
+</html>

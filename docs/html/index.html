@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AMBER — AMBER</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+</head>
+<body>
+<aside class="sidebar">
+  <a class="sidebar-logo" href="index.html">
+    <div class="sidebar-logo-icon">🔶</div>
+    <div class="sidebar-logo-text">
+      <span class="name">AMBER</span>
+      <span class="version">v2.1.0</span>
+    </div>
+  </a>
+  <div class="sidebar-section">Getting Started</div>
+  <nav>
+    <a href="index.html" class="active">Home</a>
+    <a href="installation.html">Installation</a>
+  </nav>
+  <div class="sidebar-section">Documentation</div>
+  <nav>
+    <a href="user_guide.html">User Guide</a>
+    <a href="api_reference.html">API Reference</a>
+  </nav>
+  <div class="sidebar-section">Project</div>
+  <nav>
+    <a href="changelog.html">Changelog</a>
+    <a href="contributing.html">Contributing</a>
+  </nav>
+  <div class="sidebar-footer">
+    GPL-3.0 License<br>
+    IERU · Universidad de Alcalá<br>
+    <a href="mailto:alberto.nogales@uah.es">alberto.nogales@uah.es</a>
+  </div>
+</aside>
+<div class="main">
+<div class="content">
+
+  <div class="hero">
+    <h1>🔶 AMBER</h1>
+    <p>Autoassociative Map Builder for tEmporal Representations — a Python library for Self-Organizing Maps with temporal context, seven distance metrics, and integrated visualisation.</p>
+    <div class="hero-badges">
+      <span class="badge badge-blue">Python ≥ 3.9</span>
+      <span class="badge badge-green">315 Tests Passing</span>
+      <span class="badge badge-amber">GPL-3.0 License</span>
+      <span class="badge">v2.1.0</span>
+    </div>
+  </div>
+
+  <h2>Features</h2>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-icon">🗺️</div>
+      <h3>Self-Organizing Maps</h3>
+      <p>Full SOM training pipeline: Vesanto size heuristic, four weight-init strategies, cosine learning-rate decay, and quality metrics (QE, TE).</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📏</div>
+      <h3>Seven Distance Metrics</h3>
+      <p>Euclidean, Manhattan, Chebyshev, Cosine, Correlation, DTW, and Cross-correlation — the only Python SOM library supporting DTW and XCorr.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">⏱️</div>
+      <h3>Temporal / Recurrent SOM</h3>
+      <p>TemporalMap adds a context vector (Voegtlin 2002 RSOM) that accumulates sequence history, enabling regime-change detection in time series.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔬</div>
+      <h3>Feature Extractor</h3>
+      <p>20+ domain-specific features for biosignals and audio: EEG band powers, Hjorth parameters, spectral entropy, MFCCs, and more.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <h3>Built-in Visualisation</h3>
+      <p>Heat map, U-matrix, elevation map, codebook vectors, temporal trajectory, transition matrix, and dwell-time map — all one-liners.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🧪</div>
+      <h3>Fully Tested</h3>
+      <p>265 pytest tests, 95% coverage. All tests run on synthetic data — no external files or internet access required.</p>
+    </div>
+  </div>
+
+  <h2>Workflow</h2>
+  <div class="workflow">
+    <div class="wf-step"><div class="wf-box">
+      <div class="wf-box-head"><div class="wf-num">1</div><strong>Train</strong></div>
+      <small><code>Map(data, period)</code> — choose size, distance, normalisation and weight init. The Vesanto heuristic sets map size automatically.</small>
+    </div></div>
+    <div class="wf-arrow">▼</div>
+    <div class="wf-step"><div class="wf-box">
+      <div class="wf-box-head"><div class="wf-num">2</div><strong>Classify</strong></div>
+      <small><code>Classification(som, data)</code> — BMU assignment, activation map, U-matrix, quantisation error, topological error.</small>
+    </div></div>
+    <div class="wf-arrow">▼</div>
+    <div class="wf-step"><div class="wf-box">
+      <div class="wf-box-head"><div class="wf-num">3</div><strong>Temporal analysis</strong></div>
+      <small><code>TemporalMap</code> + <code>TemporalAnalysis</code> — transition matrix, dwell times, trajectory, stability metrics.</small>
+    </div></div>
+    <div class="wf-arrow">▼</div>
+    <div class="wf-step"><div class="wf-box">
+      <div class="wf-box-head"><div class="wf-num">4</div><strong>Visualise</strong></div>
+      <small><code>Visualization.heat_map(cls)</code>, <code>umatrix(cls)</code>, <code>trajectory(tcls, ta)</code>, …</small>
+    </div></div>
+    <div class="wf-arrow">▼</div>
+    <div class="wf-step"><div class="wf-box">
+      <div class="wf-box-head"><div class="wf-num">5</div><strong>Save / Load</strong></div>
+      <small><code>som.save_classifier('model')</code> / <code>Map.load_classifier('model')</code> — JSON serialisation, no pickle.</small>
+    </div></div>
+  </div>
+
+  <h2>Quick Start</h2>
+<pre><code class="language-bash">pip install amber-som</code></pre>
+<pre><code class="language-python">import numpy as np
+import AMBER
+
+data = np.random.rand(300, 10)   # 300 samples, 10 features
+
+# Train
+som = AMBER.Map(data=data, period=200)
+print(f"Map size: {som.map_size}×{som.map_size}")   # auto-sized
+
+# Classify
+cls = AMBER.Classification(som, data)
+print(f"Quantisation error : {cls.quantization_error:.4f}")
+print(f"Topological error  : {cls.topological_error:.4f}")
+
+# Visualise
+AMBER.Visualization.heat_map(cls, colorscale='Reds')
+AMBER.Visualization.umatrix(cls)
+</code></pre>
+
+  <div class="note">
+    <strong>New here?</strong> Follow the <a href="user_guide.html">User Guide</a> for step-by-step walkthroughs of every module, or jump straight to the <a href="api_reference.html">API Reference</a>.
+  </div>
+
+  <h2>Application Domains</h2>
+  <table>
+    <thead><tr><th>Domain</th><th>Notebook</th><th>Key features</th></tr></thead>
+    <tbody>
+      <tr><td>EEG / sleep staging</td><td><code>examples/eeg_som.ipynb</code></td><td>Band powers, Hjorth, TemporalMap, AASM validation</td></tr>
+      <tr><td>Audio / speech</td><td><code>examples/audio_som.ipynb</code></td><td>MFCCs, intra/inter-class BMU distance, TemporalMap</td></tr>
+      <tr><td>Climate regimes</td><td><code>examples/climate_som.ipynb</code></td><td>NOAA teleconnection indices, correlation distance, seasonal dwell</td></tr>
+      <tr><td>Predictive maintenance</td><td><code>examples/predictive_maintenance_som.ipynb</code></td><td>CWRU bearing data, DTW, health index, Spearman ρ</td></tr>
+      <tr><td>Ablation study</td><td><code>examples/ablation_study.ipynb</code></td><td>All distances, normalisations, context sweep, Vesanto heuristic</td></tr>
+      <tr><td>Library comparison</td><td><code>examples/library_comparison.ipynb</code></td><td>AMBER vs MiniSom vs sklearn-som on 5 datasets</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Where to Go Next</h2>
+  <div class="card-grid">
+    <div class="card"><div class="card-icon">⚙️</div>
+      <h3><a href="installation.html">Installation</a></h3>
+      <p>pip, optional extras (spectral, MFCC, dev), and installing from source.</p>
+    </div>
+    <div class="card"><div class="card-icon">📖</div>
+      <h3><a href="user_guide.html">User Guide</a></h3>
+      <p>Full walkthrough: training, classification, temporal analysis, feature extraction, and visualisation.</p>
+    </div>
+    <div class="card"><div class="card-icon">📚</div>
+      <h3><a href="api_reference.html">API Reference</a></h3>
+      <p>Complete reference for every public class and function.</p>
+    </div>
+  </div>
+
+  <h2>Authors</h2>
+  <p>AMBER is developed by the <strong>IERU (Information Engineering Research Unit)</strong> research group at <strong>Universidad de Alcalá</strong> (Spain).</p>
+  <table>
+    <thead><tr><th>Name</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td>Miguel Ángel Sicilia Urbán</td><td>Principal investigator</td></tr>
+      <tr><td>Elena García Barriocanal</td><td>Researcher</td></tr>
+      <tr><td>Marçal Mora Cantallops</td><td>Researcher</td></tr>
+      <tr><td>Alberto Nogales</td><td>Lead developer</td></tr>
+      <tr><td>Alberto Rodriguez</td><td>Developer</td></tr>
+    </tbody>
+  </table>
+  <p>Contact: <a href="mailto:alberto.nogales@uah.es">alberto.nogales@uah.es</a></p>
+
+  <h2>Citation</h2>
+  <p>If you use AMBER in your research, please cite:</p>
+<pre><code class="language-bibtex">@article{nogales2024amber,
+  author  = {Nogales, Alberto and Rodriguez, Alberto and Sicilia Urbán, Miguel Ángel
+             and García Barriocanal, Elena and Mora Cantallops, Marçal},
+  title   = {AMBER: Autoassociative Map Builder for tEmporal Representations},
+  journal = {(under review)},
+  year    = {2024},
+  note    = {IERU, Universidad de Alcalá, Spain},
+}</code></pre>
+
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</body>
+</html>

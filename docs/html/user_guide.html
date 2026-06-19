@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Guide — AMBER</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+</head>
+<body>
+<aside class="sidebar">
+  <a class="sidebar-logo" href="index.html">
+    <div class="sidebar-logo-icon">🔶</div>
+    <div class="sidebar-logo-text">
+      <span class="name">AMBER</span>
+      <span class="version">v2.1.0</span>
+    </div>
+  </a>
+  <div class="sidebar-section">Getting Started</div>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="installation.html">Installation</a>
+  </nav>
+  <div class="sidebar-section">Documentation</div>
+  <nav>
+    <a href="user_guide.html" class="active">User Guide</a>
+    <a href="api_reference.html">API Reference</a>
+  </nav>
+  <div class="sidebar-section">Project</div>
+  <nav>
+    <a href="changelog.html">Changelog</a>
+    <a href="contributing.html">Contributing</a>
+  </nav>
+  <div class="sidebar-footer">
+    GPL-3.0 License<br>
+    IERU · Universidad de Alcalá<br>
+    <a href="mailto:alberto.nogales@uah.es">alberto.nogales@uah.es</a>
+  </div>
+</aside>
+<div class="main">
+<div class="content">
+
+  <div class="breadcrumb"><a href="index.html">AMBER</a> <span>›</span> User Guide</div>
+  <h1>User Guide</h1>
+
+  <div class="toc">
+    <strong>On this page</strong>
+    <ol>
+      <li><a href="#training">Training a SOM</a></li>
+      <li><a href="#reproducibility">Reproducibility</a></li>
+      <li><a href="#distances">Distance metrics</a></li>
+      <li><a href="#normalisation">Normalisation</a></li>
+      <li><a href="#classification">Classification</a></li>
+      <li><a href="#temporal">Temporal / Recurrent SOM</a></li>
+      <li><a href="#features">Feature extraction</a></li>
+      <li><a href="#iterative">Iterative map-size selection</a></li>
+      <li><a href="#visualisation">Visualisation</a></li>
+      <li><a href="#saveload">Save and load</a></li>
+    </ol>
+  </div>
+
+  <!-- Training -->
+  <h2 id="training">Training a SOM</h2>
+
+
+  <h3>Basic usage</h3>
+<pre><code class="language-python">import numpy as np
+import AMBER
+
+data = np.random.rand(300, 10)   # 300 samples, 10 features
+
+som = AMBER.Map(data=data, period=200)
+# Map size is chosen automatically by the Vesanto & Alhoniemi heuristic:
+#   size = max(2, round(sqrt(5 * sqrt(N))))
+print(f"Map size: {som.map_size}×{som.map_size}")
+</code></pre>
+
+  <div class="note">
+    <strong>What does <code>period</code> mean?</strong>
+    <code>period</code> is the <em>total number of individual pattern presentations</em>, not
+    the number of full passes over the dataset.  With <code>period=200</code> and
+    <code>N=300</code> samples, only ~67% of the data is presented on average (in random
+    mode).  To approximate <strong>K full epochs</strong>, set
+    <code>period = K × N</code>. For example, 10 epochs over 300 samples →
+    <code>period=3000</code>.
+  </div>
+
+  <h3>Choosing the map size manually</h3>
+<pre><code class="language-python">som = AMBER.Map(data=data, size=10, period=200)
+
+# The Vesanto helper is also available directly:
+print(AMBER.vesanto_size(300))   # recommended side length for 300 samples
+</code></pre>
+
+  <h3>All training options</h3>
+<pre><code class="language-python">som = AMBER.Map(
+    data=data,
+    period=500,
+    size=0,               # 0 = auto (Vesanto heuristic)
+    initial_lr=0.5,       # starting learning rate
+    initial_neighbourhood=0,  # 0 = auto-set to map_size
+    use_decay=True,       # cosine decay of lr and neighbourhood
+    distance='euclidean', # BMU search distance
+    normalization='zscore',
+    weights='PCA',        # weight initialisation
+)
+</code></pre>
+
+  <!-- Reproducibility -->
+  <h2 id="reproducibility">Reproducibility</h2>
+  <p>By default, AMBER initialises weights and selects training samples using the global NumPy RNG, so results vary between runs. Pass <code>random_seed</code> to get fully reproducible training:</p>
+<pre><code class="language-python">som = AMBER.Map(data=data, size=10, period=200, random_seed=42)
+
+# Two maps with the same seed produce identical weights:
+som1 = AMBER.Map(data=data, size=10, period=200, random_seed=42)
+som2 = AMBER.Map(data=data, size=10, period=200, random_seed=42)
+import numpy as np
+np.testing.assert_array_equal(som1.weights, som2.weights)  # passes
+
+# The seed is persisted in save/load:
+som1.save_classifier('my_model')
+loaded = AMBER.Map.load_classifier('my_model')
+print(loaded.random_seed)  # 42
+</code></pre>
+  <p><code>TemporalMap</code> accepts <code>random_seed</code> in the same way and passes it through to the parent <code>Map</code>.</p>
+
+  <!-- Distances -->
+  <h2 id="distances">Distance Metrics</h2>
+  <table>
+    <thead><tr><th>Name</th><th>When to use</th></tr></thead>
+    <tbody>
+      <tr><td><code>euclidean</code> <em>(default)</em></td><td>General-purpose; fast; works well on normalised data</td></tr>
+      <tr><td><code>manhattan</code></td><td>Robust to outliers in individual dimensions</td></tr>
+      <tr><td><code>chebyshev</code></td><td>Sensitive to the single largest dimension difference</td></tr>
+      <tr><td><code>cosine</code></td><td>Pattern shape matters more than magnitude (text, gene expression)</td></tr>
+      <tr><td><code>correlation</code></td><td>Amplitude-invariant; standard in climatology and EEG</td></tr>
+      <tr><td><code>dtw</code></td><td>Time series with phase/speed variation (speech, vibration, ECG)</td></tr>
+      <tr><td><code>cross_correlation</code></td><td>Shift-invariant similarity between periodic signals</td></tr>
+    </tbody>
+  </table>
+<pre><code class="language-python">som = AMBER.Map(data=data, period=200, distance='dtw')
+print(AMBER.AVAILABLE_DISTANCES)   # full list
+</code></pre>
+
+  <!-- Normalisation -->
+  <h2 id="normalisation">Normalisation Strategies</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td><code>none</code></td><td>No normalisation</td></tr>
+      <tr><td><code>zscore</code> / <code>fwn</code></td><td>Per-feature zero mean, unit variance</td></tr>
+      <tr><td><code>robust</code></td><td>Per-feature median/IQR scaling — robust to outliers</td></tr>
+      <tr><td><code>01scale</code></td><td>Per-feature min–max scaling to [0, 1]</td></tr>
+      <tr><td><code>l2</code> / <code>euclidean</code></td><td>Per-sample unit L2 norm</td></tr>
+      <tr><td><code>zscore_sample</code></td><td>Per-sample zero mean, unit variance</td></tr>
+      <tr><td><code>robust_sample</code></td><td>Per-sample median/IQR scaling</td></tr>
+      <tr><td><code>minmax_sample</code></td><td>Per-sample min–max scaling to [0, 1]</td></tr>
+    </tbody>
+  </table>
+<pre><code class="language-python">som = AMBER.Map(data=data, period=200,
+                distance='correlation',
+                normalization='robust')
+</code></pre>
+
+  <!-- Classification -->
+  <h2 id="classification">Classification</h2>
+<pre><code class="language-python">cls = AMBER.Classification(som, data)
+
+# Quality metrics
+print(cls.quantization_error)           # primary: uses the map's configured distance
+print(cls.quantization_error_euclidean) # secondary: always Euclidean (cross-library comparison)
+print(cls.distortion)                   # Graepel–Heskes distortion (vectorised)
+print(cls.topological_error)            # fraction with non-adjacent 2nd BMU
+
+# Per-sample BMU positions — DataFrame with columns x, y, bmu_distance
+print(cls.classification_map.head())
+
+# Activation map: (map_size, map_size) count of BMU hits
+print(cls.activations_map)
+
+# U-matrix: (2k-1, 2k-1) inter-neuron distance grid
+print(cls.umatriz.shape)
+</code></pre>
+
+  <div class="callout callout-info">
+    <strong>Metrics note:</strong>
+    <code>quantization_error</code> uses the same distance metric configured for BMU search (e.g. <code>'manhattan'</code>, <code>'cosine'</code>, etc.) — this is the primary, semantically correct metric.
+    <code>quantization_error_euclidean</code> always uses L2 regardless of the training distance, which makes it comparable with results from other SOM libraries.
+    <code>distortion</code> (Graepel &amp; Heskes 1997) sums Gaussian-weighted squared distances from each sample to <em>all</em> neurons — a global measure of fit.
+  </div>
+
+  <h3>Labelled classification</h3>
+<pre><code class="language-python">labels = np.array(['A', 'B', 'A', ...])   # one label per sample
+cls    = AMBER.Classification(som, data, labels)
+</code></pre>
+
+  <!-- Temporal -->
+  <h2 id="temporal">Temporal / Recurrent SOM</h2>
+  <p><code>TemporalMap</code> extends <code>Map</code> with a context vector (Voegtlin 2002 RSOM):</p>
+  <ul>
+    <li><strong>Context update:</strong> c<sub>t</sub> = α · c<sub>t−1</sub> + (1−α) · w<sub>BMU</sub></li>
+    <li><strong>Effective distance:</strong> d<sub>eff</sub> = (1−β) · d<sub>signal</sub> + β · d<sub>context</sub></li>
+  </ul>
+  <p>where α is <code>context_weight</code> (memory decay) and β is <code>context_influence</code>.</p>
+<pre><code class="language-python">tsom = AMBER.TemporalMap(
+    data=data,
+    period=200,
+    context_weight=0.6,     # α — how much history is retained
+    context_influence=0.3,  # β — how much context affects BMU selection
+    distance='euclidean',
+    normalization='zscore',
+)
+
+tcls = AMBER.Classification(tsom, data)
+ta   = AMBER.TemporalAnalysis(tcls)
+
+print(ta.summary())
+# stability        — fraction of consecutive identical BMUs
+# mean_path_length — mean Euclidean grid distance per step
+
+# Most frequent transitions
+for (src, dst), count in ta.most_frequent_transitions(top_k=5):
+    print(f"neuron {src} → {dst}  ({count} times)")
+
+# Reset context between independent sequences
+tsom.reset_context()
+</code></pre>
+
+  <!-- Feature extraction -->
+  <h2 id="features">Feature Extraction</h2>
+<pre><code class="language-python">from AMBER import FeatureExtractor
+
+fe = FeatureExtractor(fs=256)   # 256 Hz sampling rate
+
+# Single window → 1-D feature vector
+x = fe.extract(signal_window, features=[
+    'rms', 'zero_crossing_rate',
+    'alpha_power', 'beta_power', 'spectral_entropy',
+    'hjorth_mobility', 'hjorth_complexity',
+])
+
+# Batch → (n_windows, n_features) array ready for Map
+X = fe.extract_batch(windows, features=['rms', 'kurtosis', 'spectral_entropy'])
+</code></pre>
+
+  <h3>Available features</h3>
+  <table>
+    <thead><tr><th>Category</th><th>Features</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Statistical</strong></td><td><code>mean</code>, <code>std</code>, <code>var</code>, <code>skewness</code>, <code>kurtosis</code>, <code>rms</code>, <code>peak_to_peak</code>, <code>zero_crossing_rate</code>, <code>line_length</code></td></tr>
+      <tr><td><strong>Spectral</strong> (fs required)</td><td><code>spectral_power</code>, <code>dominant_frequency</code>, <code>spectral_entropy</code>, <code>spectral_centroid</code>, <code>spectral_rolloff</code>, <code>delta_power</code>, <code>theta_power</code>, <code>alpha_power</code>, <code>beta_power</code>, <code>gamma_power</code></td></tr>
+      <tr><td><strong>Complexity</strong></td><td><code>hjorth_activity</code>, <code>hjorth_mobility</code>, <code>hjorth_complexity</code>, <code>sample_entropy</code></td></tr>
+      <tr><td><strong>Librosa</strong> (fs + librosa)</td><td><code>mfcc</code> → <em>n_mfcc</em> values (mean per coefficient)</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Iterative -->
+  <h2 id="iterative">Iterative Map-Size Selection</h2>
+  <p><code>IterativeSOM</code> trains maps across a range of sizes and returns the one with the lowest topological error:</p>
+<pre><code class="language-python">isom = AMBER.IterativeSOM(data=data, period=100)
+best = isom.best_map()
+print(f"Best size: {best.map_size}")
+
+# Inspect all sizes tested
+print(isom.calculate_range())
+</code></pre>
+
+  <!-- Visualisation -->
+  <h2 id="visualisation">Visualisation</h2>
+<pre><code class="language-python"># Activation heat map
+AMBER.Visualization.heat_map(cls, colorscale='Reds')
+
+# U-matrix (cluster boundaries)
+AMBER.Visualization.umatrix(cls, colorscale='binary')
+
+# Elevation map (3-D surface)
+AMBER.Visualization.elevation_map(cls)
+
+# Weight profile for one neuron
+AMBER.Visualization.characteristics_graph(som, row=2, column=3)
+AMBER.Visualization.characteristics_bargraph(som, row=2, column=3,
+                                              labels=feature_names)
+
+# Codebook vectors (all dimensions)
+AMBER.Visualization.codebook_vectors(som, headers=feature_names)
+
+# Temporal plots
+AMBER.Visualization.trajectory(tcls, ta, background='activations')
+AMBER.Visualization.transition_matrix_plot(ta, normalised=True)
+AMBER.Visualization.dwell_time_map(ta, tcls)
+</code></pre>
+
+  <!-- Save / Load -->
+  <h2 id="saveload">Save and Load</h2>
+<pre><code class="language-python"># Save to JSON (no pickle — human-readable)
+som.save_classifier('my_model')          # writes my_model.json
+
+# Load back
+loaded = AMBER.Map.load_classifier('my_model')
+_, bmu_pos, _, _ = loaded.calculate_bmu(data[0])
+
+# TemporalMap save/load works the same way
+tsom.save_classifier('temporal_model')
+loaded_t = AMBER.TemporalMap.load_classifier('temporal_model')
+</code></pre>
+
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</body>
+</html>

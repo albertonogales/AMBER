@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Changelog — AMBER</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+</head>
+<body>
+<aside class="sidebar">
+  <a class="sidebar-logo" href="index.html">
+    <div class="sidebar-logo-icon">🔶</div>
+    <div class="sidebar-logo-text">
+      <span class="name">AMBER</span>
+      <span class="version">v2.1.0</span>
+    </div>
+  </a>
+  <div class="sidebar-section">Getting Started</div>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="installation.html">Installation</a>
+  </nav>
+  <div class="sidebar-section">Documentation</div>
+  <nav>
+    <a href="user_guide.html">User Guide</a>
+    <a href="api_reference.html">API Reference</a>
+  </nav>
+  <div class="sidebar-section">Project</div>
+  <nav>
+    <a href="changelog.html" class="active">Changelog</a>
+    <a href="contributing.html">Contributing</a>
+  </nav>
+  <div class="sidebar-footer">
+    GPL-3.0 License<br>
+    IERU · Universidad de Alcalá<br>
+    <a href="mailto:alberto.nogales@uah.es">alberto.nogales@uah.es</a>
+  </div>
+</aside>
+<div class="main">
+<div class="content">
+
+  <div class="breadcrumb"><a href="index.html">AMBER</a> <span>›</span> Changelog</div>
+  <h1>Changelog</h1>
+  <p>All notable changes to AMBER are documented here.</p>
+
+  <div class="version-block">
+    <div class="version-tag">v2.1.0 — 2026</div>
+    <h3>Added</h3>
+    <ul>
+      <li><strong>random_seed</strong> parameter on <code>Map</code> and <code>TemporalMap</code> — pass an integer for fully reproducible training; persisted in JSON save/load</li>
+      <li>Type annotations on all public methods in <code>map.py</code>, <code>temporal_map.py</code>, and <code>classification.py</code></li>
+      <li><code>ruff</code> and <code>mypy</code> added to CI and dev dependencies — linting and type-checking enforced on every push</li>
+      <li>12 new tests: <code>TestReproducibility</code>, <code>TestReinforce</code>, <code>TestSaveLoadExtended</code>, <code>TestTemporalMapReproducibility</code> (315 tests total, 96% coverage)</li>
+    </ul>
+    <h3>Changed</h3>
+    <ul>
+      <li>All <code>print()</code> calls replaced with <code>logging</code> (<code>logger.info</code>/<code>logger.debug</code>) — libraries no longer pollute stdout</li>
+      <li>Packaging consolidated to a single <code>pyproject.toml</code> (PEP 517/518); <code>setup.py</code> removed; <code>requires-python = "&gt;=3.9"</code></li>
+      <li><code>Classification.__init__</code> <code>verbose</code> parameter changed from <code>int</code> to <code>bool</code> (<code>verbose: bool = False</code>)</li>
+      <li>Vectorised distortion and Euclidean QE computation in <code>classification.py</code> — significant speedup for large datasets</li>
+      <li>All RNG calls in <code>map.py</code> use instance-level <code>np.random.default_rng(random_seed)</code> — no global state mutation</li>
+      <li>CI matrix updated to Python 3.9–3.12 (dropped EOL 3.8; added 3.12)</li>
+      <li>Input validation changed from <code>assert</code> to <code>raise ValueError</code> — guards are not disabled by <code>python -O</code></li>
+      <li><code>period</code> docstring clarified: it counts total pattern presentations, not full epochs (<code>period = K × N</code> ≈ K epochs)</li>
+      <li><code>reinforce()</code> neighbourhood now decays correctly using <code>variation_neighbourhood</code> rather than being hardcoded to 1</li>
+      <li>Removed duplicate <code>self.presentation</code> assignment in <code>Map.__init__</code></li>
+      <li><code>cross_correlation_distance</code> docstring updated to explain why the [0,1] bound holds (Cauchy-Schwarz on unit-norm sub-vectors)</li>
+    </ul>
+    <h3>Fixed</h3>
+    <ul>
+      <li><code>reinforce()</code> now correctly passes <code>mode=self.lr_decay</code> to <code>variation_learning_rate</code></li>
+    </ul>
+  </div>
+
+  <div class="version-block">
+    <div class="version-tag">v2.1.1 — 2026</div>
+    <h3>Added</h3>
+    <ul>
+      <li><strong>TemporalAnalysis</strong>: two new scalar attributes —
+        <code>temporal_coherence</code> (fraction of consecutive BMU steps with Chebyshev distance ≤ 1; range [0, 1])
+        and <code>mean_chebyshev_jump</code> (mean L∞ grid distance per step).
+        Both are computed in <code>__init__</code> and reported by <code>summary()</code>.
+        <code>transition_matrix_norm</code> (row-normalised transition probabilities) is also now exposed as a public attribute.</li>
+      <li><strong>Visualization</strong>: three new static methods —
+        <ul>
+          <li><code>umatrix_labeled(cls, labels, …)</code> — U-matrix background with coloured circle markers showing the majority class and sample count per neuron; legend placed between title and axes</li>
+          <li><code>hit_map(cls, labels, …)</code> — hit map where cell size scales with √(n/n_max) and background tint encodes the majority class; legend placed above axes with up to 5 columns</li>
+          <li><code>weight_map_grid(som, cls, labels, …)</code> — k×k subplot grid, one line-plot per neuron's weight vector, background tinted by majority class, dead neurons shown in grey with address annotation</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+  <div class="version-block">
+    <div class="version-tag">v2.0.0 — 2024</div>
+    <h3>Added</h3>
+    <ul>
+      <li>Renamed library from GEMA/AMBAR to <strong>AMBER</strong> (Autoassociative Map Builder for tEmporal Representations)</li>
+      <li>PyPI package name <code>amber-som</code></li>
+      <li><strong>TemporalMap</strong> — Recurrent SOM with context vector (Voegtlin 2002)</li>
+      <li><strong>TemporalAnalysis</strong> — transition matrix, dwell times, trajectory, stability metrics</li>
+      <li><strong>FeatureExtractor</strong> — 20+ features for biosignals and audio (band powers, Hjorth, MFCC, entropy)</li>
+      <li><strong>IterativeSOM</strong> — automatic map-size selection by topological error</li>
+      <li>Seven signal distance metrics: euclidean, manhattan, chebyshev, cosine, correlation, DTW, cross-correlation</li>
+      <li>Eight normalisation strategies including per-sample variants</li>
+      <li>Four weight-initialisation strategies: random, random-negative, sample, PCA</li>
+      <li>Cosine decay of learning rate and neighbourhood radius</li>
+      <li>JSON save/load for Map and TemporalMap (no pickle)</li>
+      <li>Visualisation: heat map, U-matrix, elevation map, codebook vectors, trajectory, transition matrix, dwell-time map</li>
+      <li>265 pytest tests, 95 % coverage</li>
+      <li>Sphinx HTML documentation</li>
+      <li>CI via GitHub Actions (Python 3.8 – 3.11)</li>
+      <li>Example notebooks: EEG, audio, climate, predictive maintenance, ablation study, library comparison</li>
+    </ul>
+    <h3>Changed</h3>
+    <ul>
+      <li>All public classes re-documented with full NumPy-style docstrings</li>
+      <li>Package structure aligned with PEP 517/518 (<code>pyproject.toml</code>)</li>
+    </ul>
+    <h3>Fixed</h3>
+    <ul>
+      <li>Colourmap resampling call compatible with Matplotlib ≥ 3.7</li>
+      <li>RST pipe-character conflict in <code>distances.py</code> docstring</li>
+    </ul>
+  </div>
+
+  <div class="version-block">
+    <div class="version-tag unreleased">v1.0.0 — GEMA</div>
+    <p>Original internal library (GEMA / AMBAR). Basic SOM training and classification, Euclidean distance only.</p>
+  </div>
+
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</body>
+</html>

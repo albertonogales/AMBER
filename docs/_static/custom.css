@@ -1,0 +1,8 @@
+/* Slightly wider content area */
+.wy-nav-content { max-width: 960px; }
+
+/* Code blocks */
+div.highlight { border-left: 3px solid #2980b9; }
+
+/* Note boxes */
+.rst-content .note { border-left: 4px solid #2980b9; }

@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+coverage_html/
+htmlcov/
+
+# Tools
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# uv
+.uv/
+
+# Example data (large datasets — download separately)
+examples/data/
+examples/.ipynb_checkpoints/
+examples/*.csv
+examples/*.png
+examples/*.txt
+examples/*.zip
+"examples/cbf_weight_map copia.png"

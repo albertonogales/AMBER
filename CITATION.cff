@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use AMBER in your research, please cite it using this metadata."
+type: software
+title: "AMBER: Autoassociative Map Builder for tEmporal Representations"
+version: "2.1.0"
+license: GPL-3.0-only
+repository-code: "https://github.com/albertonogales/AMBER"
+url: "https://amber-som.readthedocs.io/"
+abstract: >
+  AMBER is a Python library for Self-Organizing Maps (SOMs) that supports
+  standard and temporal (recurrent) SOMs, seven distance metrics, multiple
+  normalisation strategies, a comprehensive feature-extraction pipeline for
+  biosignals and audio, and publication-ready visualisation tools.
+authors:
+  - family-names: "Nogales"
+    given-names: "Alberto"
+    affiliation: "Universidad de Alcalá (UAH), IERU Research Group"
+    email: "alberto.nogales@uah.es"
+    orcid: ""
+  - family-names: "García-Tejedor"
+    given-names: "Álvaro José"
+    affiliation: "Universidad Francisco de Vitoria (UFV), CEIEC Research Institute"
+keywords:
+  - self-organizing maps
+  - unsupervised learning
+  - temporal analysis
+  - biosignal processing
+  - feature extraction
+  - Python
