@@ -1,9 +1,16 @@
 """Shared fixtures for the AMBER test suite."""
 
+import matplotlib
+matplotlib.use('Agg')  # non-interactive backend before any pyplot import
+
 import numpy as np
+import plotly.io as pio
 import pytest
 
 import AMBER
+
+# Force plotly to use a headless renderer — prevents iplot/notebook errors in CI
+pio.renderers.default = "json"
 
 
 # ---------------------------------------------------------------------------
