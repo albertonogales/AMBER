@@ -1,3 +1,5 @@
+import logging
+
 import matplotlib.patches as mpatches
 import numpy as np
 import plotly.figure_factory as ff
@@ -5,6 +7,8 @@ import plotly.graph_objs as go
 import plotly.io as pio
 from matplotlib import pyplot as plt
 from matplotlib.colors import to_rgba
+
+logger = logging.getLogger(__name__)
 
 try:
     from IPython.display import display
@@ -529,7 +533,7 @@ class Visualization:
         """
         traj = temporal_analysis.trajectory
         if len(traj) < 2:
-            print("Trajectory too short to plot.")
+            logger.warning("Trajectory too short to plot.")
             return
 
         fig, ax = plt.subplots(figsize=figsize)

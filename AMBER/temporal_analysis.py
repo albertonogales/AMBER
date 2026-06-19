@@ -13,7 +13,11 @@ ordered time series:
   trajectory         — ordered sequence of (row, col) BMU positions
 """
 
+import logging
+
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class TemporalAnalysis:
@@ -159,16 +163,28 @@ class TemporalAnalysis:
             t += run
         return {pos: float(np.mean(runs)) for pos, runs in dwell.items()}
 
-    def summary(self):
-        """Print a short human-readable summary."""
-        print(f"Sequence length     : {len(self.trajectory)}")
-        print(f"Unique BMUs visited : {len(set(self.trajectory))}")
-        print(f"Stability           : {self.stability:.3f}")
-        print(f"Mean path length    : {self.mean_path_length:.3f} grid units (Euclidean)")
-        print(f"Mean Chebyshev jump : {self.mean_chebyshev_jump:.3f} grid units")
-        print(f"Temporal Coherence  : {self.temporal_coherence:.3f}  "
-              f"(fraction of steps with Chebyshev jump ≤ 1)")
+    def summary(self) -> str:
+        """Return a short human-readable summary string.
+
+        The summary is also emitted at INFO level via the standard logging
+        framework so library users can control visibility with their own
+        logging configuration.
+
+        :return: formatted summary string
+        """
         top = self.most_frequent_transitions(3)
-        print("Top-3 transitions   :")
-        for tr in top:
-            print(f"  {tr['from']} → {tr['to']}  ({tr['count']} times)")
+        transitions = "\n".join(
+            f"  {tr['from']} → {tr['to']}  ({tr['count']} times)" for tr in top
+        )
+        text = (
+            f"Sequence length     : {len(self.trajectory)}\n"
+            f"Unique BMUs visited : {len(set(self.trajectory))}\n"
+            f"Stability           : {self.stability:.3f}\n"
+            f"Mean path length    : {self.mean_path_length:.3f} grid units (Euclidean)\n"
+            f"Mean Chebyshev jump : {self.mean_chebyshev_jump:.3f} grid units\n"
+            f"Temporal Coherence  : {self.temporal_coherence:.3f}  "
+            f"(fraction of steps with Chebyshev jump ≤ 1)\n"
+            f"Top-3 transitions   :\n{transitions}"
+        )
+        logger.info(text)
+        return text

@@ -111,8 +111,7 @@ class TestMostFrequentTransitions:
 
 
 class TestSummary:
-    def test_summary_runs_without_error(self, temporal_analysis, capsys):
-        temporal_analysis.summary()
-        captured = capsys.readouterr()
-        assert 'Stability' in captured.out
-        assert 'Unique BMUs' in captured.out
+    def test_summary_runs_without_error(self, temporal_analysis):
+        result = temporal_analysis.summary()
+        assert 'Stability' in result
+        assert 'Unique BMUs' in result

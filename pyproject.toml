@@ -41,7 +41,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/albertonogales/AMBER"
+Homepage      = "https://github.com/albertonogales/AMBER"
+Documentation = "https://amber-som.readthedocs.io/"
+Changelog     = "https://github.com/albertonogales/AMBER/blob/main/CHANGELOG.md"
+Source        = "https://github.com/albertonogales/AMBER"
+"Bug Tracker" = "https://github.com/albertonogales/AMBER/issues"
 
 [project.optional-dependencies]
 spectral = ["scipy>=1.7"]
