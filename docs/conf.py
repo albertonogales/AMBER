@@ -4,7 +4,7 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 
 project   = 'AMBER'
-author    = 'Alberto Nogales, Álvaro José García-Tejedor'
+author    = 'Alberto Nogales'
 copyright = '2026, IERU — Universidad de Alcalá'
 
 try:

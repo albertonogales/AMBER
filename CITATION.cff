@@ -17,9 +17,6 @@ authors:
     affiliation: "Universidad de Alcalá (UAH), IERU Research Group"
     email: "alberto.nogales@uah.es"
     orcid: ""
-  - family-names: "García-Tejedor"
-    given-names: "Álvaro José"
-    affiliation: "Universidad Francisco de Vitoria (UFV), CEIEC Research Institute"
 keywords:
   - self-organizing maps
   - unsupervised learning

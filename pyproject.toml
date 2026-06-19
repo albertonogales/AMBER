@@ -10,7 +10,6 @@ readme = "README.md"
 license = "GPL-3.0-only"
 authors = [
     {name = "Alberto Nogales", email = "alberto.nogales@uah.es"},
-    {name = "Álvaro José García-Tejedor"},
 ]
 requires-python = ">=3.9"
 keywords = [
