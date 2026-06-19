@@ -159,13 +159,13 @@ class Map:
         self._norm_params: dict = {}
 
         # Create index matrix
-        self.__ids_matrix = []
+        ids: list[list[list[int]]] = []
         for y in range(self.map_size):
-            row = []
+            row: list[list[int]] = []
             for x in range(self.map_size):
                 row.append([y, x])
-            self.__ids_matrix.append(row)
-        self.__ids_matrix = np.array(self.__ids_matrix)
+            ids.append(row)
+        self.__ids_matrix: np.ndarray = np.array(ids)
 
         if data is not None:
             self.train(data)
@@ -541,7 +541,7 @@ class Map:
             norms[norms == 0] = 1.0
             return data / norms
 
-        return data
+        return data  # 'none' or unrecognised method — return unchanged
 
     def __init_weights(self, data: np.ndarray, method: str) -> np.ndarray:
         """ Function to initialize the weights matrix
@@ -593,6 +593,9 @@ class Map:
                 for j, c2 in enumerate(np.linspace(-1, 1, self.map_size)):
                     pca_weights[i, j] = c1 * pc1 + c2 * pc2
             return pca_weights
+
+        # Fallback — should never be reached given input validation in train()
+        raise ValueError(f"Unknown weight initialisation method: '{method}'")
 
     ######################################################
     #                    JSON METHODS                    #
