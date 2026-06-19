@@ -92,7 +92,7 @@ class Classification:
 
             # Distance measured with the map's own configured metric (primary)
             distance = scalar_dist_fn(som.weights[bmu_pos], norm_data[pattern],
-                                      **dtw_kwargs)
+                                      **dtw_kwargs)  # type: ignore[operator]
             self.activations_map[bmu_pos] += 1
             self.distances_map[bmu_pos] += distance
             bmu_positions[pattern] = bmu_pos

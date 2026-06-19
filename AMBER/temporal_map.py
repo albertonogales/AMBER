@@ -141,7 +141,7 @@ class TemporalMap(Map):
         """
         dist_fn = SIGNAL_DISTANCE_MATRIX[self.distance]
         kwargs = {'band': self.dtw_band} if self.distance == 'dtw' else {}
-        signal_dist = dist_fn(self.weights, pattern, **kwargs)
+        signal_dist = dist_fn(self.weights, pattern, **kwargs)  # type: ignore[operator]
 
         if self._context is not None and self.context_influence > 0:
             context_dist = euclidean_distance_matrix(self.weights, self._context)
@@ -192,7 +192,7 @@ class TemporalMap(Map):
 
     def save_classifier(self, filename: str = 'Model') -> None:
         """Save map to JSON, including temporal parameters."""
-        data = {'model': []}
+        data: dict = {'model': []}
         data['model'].append({
             'map_size':             self.map_size,
             'input_data_dimension': self.input_data_dimension,
@@ -245,6 +245,6 @@ class TemporalMap(Map):
         raw_params = model.get('norm_params', {})
         tm._norm_params = {k: np.array(v) if isinstance(v, list) else v
                            for k, v in raw_params.items()}
-        tm._Map__trainned       = True   # match parent's name-mangled attribute
+        tm._Map__trained        = True   # type: ignore[attr-defined]  # name-mangled parent attr
         logger.info('Imported successfully')
         return tm

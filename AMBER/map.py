@@ -263,7 +263,7 @@ class Map:
                 self.__adjust_weights(v, eta, bmu[1], new_pattern)
 
             # After each round neighbourhood has converged to 1; keep it there for next round
-            round_neighbourhood = 1.0
+            round_neighbourhood = 1
 
         self.__trained = True
 
@@ -281,7 +281,7 @@ class Map:
         """
         dist_fn = SIGNAL_DISTANCE_MATRIX[self.distance]
         kwargs = {'band': self.dtw_band} if self.distance == 'dtw' else {}
-        distances = dist_fn(self.weights, pattern, **kwargs)
+        distances = dist_fn(self.weights, pattern, **kwargs)  # type: ignore[operator]
 
         bmu_dist = np.min(distances)
         bmu_pos  = np.unravel_index(np.argmin(distances), distances.shape)
@@ -664,7 +664,7 @@ class Map:
         :param filename: path without the ``.json`` extension (default ``'Model'``)
         """
         # Creating the JSON object
-        data = {'model': []}
+        data: dict = {'model': []}
 
         # Setting array
 
