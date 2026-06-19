@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use AMBER in your research, please cite it using this metadata."
 type: software
 title: "AMBER: Autoassociative Map Builder for tEmporal Representations"
-version: "2.1.0"
+version: "2.2.0"
 license: GPL-3.0-only
 repository-code: "https://github.com/albertonogales/AMBER"
 url: "https://amber-som.readthedocs.io/"
