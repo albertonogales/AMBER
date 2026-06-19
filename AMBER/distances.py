@@ -15,7 +15,15 @@ Vectorised matrix functions are provided for all distances except DTW and cross-
 which require a per-neuron loop due to their sequential nature.
 """
 
+from __future__ import annotations
+
+from typing import Any, Callable, Dict
+
 import numpy as np
+
+# Type aliases for distance functions
+MatrixDistFn = Callable[..., Any]
+ScalarDistFn = Callable[..., Any]
 
 # ---------------------------------------------------------------------------
 # Signal distances — scalar
@@ -200,7 +208,7 @@ def grid_chebyshev(ids_matrix, bmu):
 # Registry
 # ---------------------------------------------------------------------------
 
-SIGNAL_DISTANCE_MATRIX = {
+SIGNAL_DISTANCE_MATRIX: Dict[str, MatrixDistFn] = {
     'euclidean':         euclidean_distance_matrix,
     'manhattan':         manhattan_distance_matrix,
     'chebyshev':         chebyshev_distance_matrix,
@@ -210,7 +218,7 @@ SIGNAL_DISTANCE_MATRIX = {
     'cross_correlation': cross_correlation_distance_matrix,
 }
 
-SIGNAL_DISTANCE_SCALAR = {
+SIGNAL_DISTANCE_SCALAR: Dict[str, ScalarDistFn] = {
     'euclidean':         euclidean_distance,
     'manhattan':         manhattan_distance,
     'chebyshev':         chebyshev_distance,

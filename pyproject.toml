@@ -69,4 +69,3 @@ ignore = ["E501"]   # line-length handled above
 python_version = "3.10"
 ignore_missing_imports = true
 no_strict_optional = true
-warn_unused_ignores = true

@@ -141,7 +141,7 @@ class TemporalMap(Map):
         """
         dist_fn = SIGNAL_DISTANCE_MATRIX[self.distance]
         kwargs = {'band': self.dtw_band} if self.distance == 'dtw' else {}
-        signal_dist = dist_fn(self.weights, pattern, **kwargs)  # type: ignore
+        signal_dist = dist_fn(self.weights, pattern, **kwargs)
 
         if self._context is not None and self.context_influence > 0:
             context_dist = euclidean_distance_matrix(self.weights, self._context)
