@@ -155,7 +155,7 @@ class Map:
         self.weights_init = weights
 
         # Initialize weights and normalisation state
-        self.weights = np.ones(1)
+        self.weights: np.ndarray = np.ones(1)
         self._norm_params: dict = {}
 
         # Create index matrix
