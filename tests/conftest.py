@@ -3,14 +3,24 @@
 import matplotlib
 matplotlib.use('Agg')  # non-interactive backend before any pyplot import
 
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-import plotly.io as pio
 import pytest
 
 import AMBER
 
-# Force plotly to use a headless renderer — prevents iplot/notebook errors in CI
-pio.renderers.default = "json"
+
+# ---------------------------------------------------------------------------
+# Plotly: suppress all rendering in tests — smoke tests only verify that
+# figures are built correctly, not that they are displayed.
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True, scope='session')
+def mock_plotly_show():
+    """Patch plotly.io.show to a no-op for the entire test session."""
+    with patch('plotly.io.show', MagicMock()):
+        yield
 
 
 # ---------------------------------------------------------------------------

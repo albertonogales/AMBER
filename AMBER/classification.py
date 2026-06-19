@@ -114,6 +114,7 @@ class Classification:
         # TE = fraction of samples whose BMU and 2nd-BMU are non-adjacent (Villmann 1997)
         self.topological_error = np.sum(self.topological_map) / n_samples
         self.topological_error_map = np.divide(self.topological_map, self.activations_map,
+                                               out=np.zeros_like(self.topological_map),
                                                where=self.activations_map != 0)
 
         # Primary QE: uses the map's configured distance — semantically correct.
@@ -121,6 +122,7 @@ class Classification:
         # with the metric used during both training and BMU search.
         self.quantization_error = np.sum(self.distances_map) / n_samples
         self.quantization_error_map = np.divide(self.distances_map, self.activations_map,
+                                                out=np.zeros_like(self.distances_map),
                                                 where=self.activations_map != 0)
 
         # Secondary QE: always Euclidean, vectorised. (N, d) - (N, d) → (N,)
