@@ -2,14 +2,15 @@ import matplotlib.patches as mpatches
 import numpy as np
 import plotly.figure_factory as ff
 import plotly.graph_objs as go
+from matplotlib import pyplot as plt
+from matplotlib.colors import to_rgba
+from plotly.offline import iplot
+
 try:
     from IPython.display import display
 except ImportError:
     def display(*args, **kwargs):  # type: ignore[misc]
         pass  # no-op outside Jupyter
-from matplotlib import pyplot as plt
-from matplotlib.colors import to_rgba
-from plotly.offline import iplot
 
 
 class Visualization:
