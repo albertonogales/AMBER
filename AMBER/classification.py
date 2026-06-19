@@ -48,10 +48,10 @@ class Classification:
         self.distances_map = np.zeros((som.map_size, som.map_size), dtype=float)
         self.topological_map = np.zeros((som.map_size, som.map_size), dtype=float)
         self.umatriz = np.zeros((som.map_size * 2 - 1, som.map_size * 2 - 1), dtype=float)
-        self.topological_error = 0
-        self.quantization_error = 0           # configured distance (primary)
-        self.quantization_error_euclidean = 0 # always Euclidean (for cross-library comparison)
-        self.distortion = 0
+        self.topological_error: float = 0.0
+        self.quantization_error: float = 0.0           # configured distance (primary)
+        self.quantization_error_euclidean: float = 0.0 # always Euclidean (for cross-library comparison)
+        self.distortion: float = 0.0
         self.topological_error_map = np.zeros((som.map_size, som.map_size), dtype=float)
         self.quantization_error_map = np.zeros((som.map_size, som.map_size), dtype=float)
 
@@ -92,7 +92,7 @@ class Classification:
 
             # Distance measured with the map's own configured metric (primary)
             distance = scalar_dist_fn(som.weights[bmu_pos], norm_data[pattern],
-                                      **dtw_kwargs)  # type: ignore[operator]
+                                      **dtw_kwargs)  # type: ignore
             self.activations_map[bmu_pos] += 1
             self.distances_map[bmu_pos] += distance
             bmu_positions[pattern] = bmu_pos

@@ -281,7 +281,7 @@ class Map:
         """
         dist_fn = SIGNAL_DISTANCE_MATRIX[self.distance]
         kwargs = {'band': self.dtw_band} if self.distance == 'dtw' else {}
-        distances = dist_fn(self.weights, pattern, **kwargs)  # type: ignore[operator]
+        distances = dist_fn(self.weights, pattern, **kwargs)  # type: ignore
 
         bmu_dist = np.min(distances)
         bmu_pos  = np.unravel_index(np.argmin(distances), distances.shape)
@@ -644,7 +644,7 @@ class Map:
                       random_seed=random_seed,
                       )
 
-        new_map.weights = weights
+        new_map.weights = np.asarray(weights)
         new_map.input_data_dimension = input_data_dimension
         new_map.presentation = presentation
         new_map.num_data = num_data
