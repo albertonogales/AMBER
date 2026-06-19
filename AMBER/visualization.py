@@ -2,9 +2,9 @@ import matplotlib.patches as mpatches
 import numpy as np
 import plotly.figure_factory as ff
 import plotly.graph_objs as go
+import plotly.io as pio
 from matplotlib import pyplot as plt
 from matplotlib.colors import to_rgba
-from plotly.offline import iplot
 
 try:
     from IPython.display import display
@@ -37,7 +37,7 @@ class Visualization:
         cmax = np.max(classification.activations_map) if cmax == 0 else cmax
         fig = ff.create_annotated_heatmap(map_rot, showscale=True, colorscale=colorscale, zmin=0, zmax=cmax)
 
-        iplot(fig, filename=filename)
+        pio.show(fig)
 
     # ELEVATION MAP
     @staticmethod
@@ -69,7 +69,7 @@ class Visualization:
             )
         )
         fig = go.Figure(data=data, layout=layout)
-        iplot(fig, filename=filename)
+        pio.show(fig)
 
     # CHARACTERISTICS GRAPH
     @staticmethod
@@ -133,7 +133,7 @@ class Visualization:
             'yaxis': {'title': 'Number of Neurons'},
             'barmode': 'relative'
         }
-        iplot({'data': data_bar, 'layout': layout}, filename=filename)
+        pio.show({"data": data_bar, "layout": layout})
 
     # NEURONS PER NUM ACTIVATIONS
     @staticmethod
@@ -177,7 +177,7 @@ class Visualization:
         for i in range(len(fig.layout.annotations)):
             fig.layout.annotations[i].font.size = 7
 
-        iplot(fig, filename=filename)
+        pio.show(fig)
 
     @staticmethod
     def codebook_vectors(map, headers=np.array([])):
