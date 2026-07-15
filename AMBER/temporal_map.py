@@ -1,34 +1,11 @@
 """
-Recurrent Self-Organising Map (RSOM) for temporal / sequential data.
+Recurrent SOM (RSOM) for temporal/sequential data (Voegtlin, 2002).
 
-Standard SOM treats every input independently, which discards temporal
-structure.  TemporalMap extends Map with a context vector that accumulates
-a decaying memory of recently activated neurons, making BMU search sensitive
-to the history of the input sequence.
+Extends Map with a context vector that decays past activations into BMU search:
+    context_t  = α·context_{t-1} + (1-α)·w_{BMU_{t-1}}
+    d_eff(x,w) = (1-β)·d(x,w) + β·‖context−w‖
 
-Update rule (Voegtlin, 2002):
-    context_t  =  α · context_{t-1}  +  (1 - α) · w_{BMU_{t-1}}
-    d_eff(x_t, w_j) = (1 - β) · d(x_t, w_j)  +  β · ||context_t - w_j||
-
-Parameters
-----------
-context_weight  (α)  : retention of previous context; 0 = no memory, 1 = pure memory
-context_influence (β): weight of context distance vs. signal distance;
-                       0 = plain SOM, 1 = context-only
-
-Notes
------
-- Data must be presented in temporal order; TemporalMap forces
-  presentation='sequential' and warns if changed.
-- Call reset_context() between independent sequences (e.g. between
-  different EEG recordings or audio files).
-- The context distance is always Euclidean in weight space, regardless of
-  the signal-space distance metric chosen for BMU search.  When
-  ``distance`` is not ``'euclidean'``, the two components of the combined
-  metric operate on different scales; the effective balance set by
-  ``context_influence`` therefore depends on the magnitude of both terms.
-  For reliable scale parity, use ``distance='euclidean'`` or normalise
-  data before training so all distances are O(1).
+Context distance is always Euclidean; call reset_context() between independent sequences.
 """
 
 from __future__ import annotations
@@ -63,13 +40,9 @@ class TemporalMap(Map):
                  context_influence: float = 0.5,
                  random_seed: Optional[int] = None) -> None:
         """
-        :param context_weight: α — controls how much of the previous context is
-            retained each step (0 = forget immediately, 1 = never update).
-        :param context_influence: β — how strongly context distance contributes
-            to BMU selection relative to signal distance (0 = plain SOM,
-            0.5 = equal weight, 1 = context only).
-        :param random_seed: Seed for the random number generator. Pass an integer
-            for reproducible results. None (default) uses a non-deterministic seed.
+        :param context_weight: α — context retention per step (0 = forget, 1 = freeze).
+        :param context_influence: β — context vs. signal weight in BMU search (0 = plain SOM).
+        :param random_seed: integer for reproducible results; None = non-deterministic.
 
         All other parameters are identical to Map.__init__.
         """
@@ -80,8 +53,7 @@ class TemporalMap(Map):
         self.context_influence = context_influence
         self._context = None
 
-        # Resolve size here because super().__init__ receives data=None,
-        # so it cannot apply the Vesanto heuristic on its own.
+        # Resolve size before super().__init__ since we pass data=None to defer training.
         if size is None:
             if data is None:
                 raise ValueError(
@@ -94,9 +66,8 @@ class TemporalMap(Map):
                 f"(N={data.shape[0]})."
             )
 
-        # Temporal SOM requires sequential presentation to preserve order.
         super().__init__(
-            data=None,          # delay training until context is ready
+            data=None,
             size=size,
             period=period,
             initial_lr=initial_lr,
@@ -105,7 +76,7 @@ class TemporalMap(Map):
             dtw_band=dtw_band,
             use_decay=use_decay,
             normalization=normalization,
-            presentation='sequential',
+            presentation='sequential',  # order must be preserved for temporal context
             weights=weights,
             random_seed=random_seed,
         )
@@ -118,12 +89,7 @@ class TemporalMap(Map):
     # ------------------------------------------------------------------
 
     def reset_context(self) -> None:
-        """Reset the context vector to zero.
-
-        Call this between independent sequences (e.g. different subjects,
-        different recordings) so that history from one sequence does not
-        bleed into the next.
-        """
+        """Zero the context vector; call between independent sequences."""
         self._context = None
 
     # ------------------------------------------------------------------
@@ -131,14 +97,7 @@ class TemporalMap(Map):
     # ------------------------------------------------------------------
 
     def calculate_bmu(self, pattern: np.ndarray) -> Tuple:
-        """BMU search incorporating the temporal context vector.
-
-        Combines signal-space distance with context distance.  After the
-        BMU is found, updates the context vector using the winner's weights.
-
-        :param pattern: 1-D input array
-        :return: (bmu_dist, bmu_pos, second_bmu_dist, second_bmu_pos)
-        """
+        """BMU search combining signal and context distances; updates context after."""
         dist_fn = SIGNAL_DISTANCE_MATRIX[self.distance]
         kwargs = {'band': self.dtw_band} if self.distance == 'dtw' else {}
         signal_dist = dist_fn(self.weights, pattern, **kwargs)
@@ -157,7 +116,6 @@ class TemporalMap(Map):
         second_bmu_dist = float(np.min(combined))
         second_bmu_pos  = np.unravel_index(np.argmin(combined), combined.shape)
 
-        # Update context with the winning neuron's weight vector
         winner_weights = self.weights[bmu_pos]
         if self._context is None:
             self._context = winner_weights.copy()
@@ -172,11 +130,7 @@ class TemporalMap(Map):
     # ------------------------------------------------------------------
 
     def train(self, data: np.ndarray) -> None:
-        """Train the map on a temporally ordered dataset.
-
-        Context is reset at the start of each training call so that
-        separate calls to train() are independent.
-        """
+        """Train on temporally ordered data; resets context so calls are independent."""
         self.reset_context()
         super().train(data)
 

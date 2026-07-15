@@ -1,16 +1,8 @@
 """
-Temporal analysis metrics for SOM classification results.
+Temporal metrics for SOM classification results assumed to be an ordered time series.
 
-TemporalAnalysis takes a completed Classification object and computes
-metrics that are only meaningful when the classified patterns form an
-ordered time series:
-
-  transition_matrix  — how often the SOM moves from neuron i to neuron j
-  stability          — fraction of steps where the BMU does not change
-  mean_path_length   — average Euclidean grid distance per step
-  mean_chebyshev_jump — average Chebyshev grid distance per step
-  temporal_coherence — fraction of steps with Chebyshev jump ≤ 1
-  trajectory         — ordered sequence of (row, col) BMU positions
+Computes transition_matrix, stability, mean_path_length, mean_chebyshev_jump,
+temporal_coherence, and trajectory from a completed Classification object.
 """
 
 import logging
@@ -23,37 +15,9 @@ logger = logging.getLogger(__name__)
 class TemporalAnalysis:
     """Temporal dynamics of a SOM classification result.
 
-    Parameters
-    ----------
-    classification : Classification
-        A completed Classification instance.  The patterns in
-        classification.classification_data are assumed to be ordered
-        in time (as they would be for windowed biosignals or audio).
-
-    Attributes
-    ----------
-    trajectory : list of (int, int)
-        Ordered BMU positions [(row_0, col_0), (row_1, col_1), ...].
-    transition_matrix : ndarray, shape (n_neurons, n_neurons)
-        Raw count of transitions; entry [i, j] = number of times the
-        SOM moved from neuron i to neuron j between consecutive patterns.
-        Neurons are linearised as  index = row * map_size + col.
-    transition_matrix_norm : ndarray, shape (n_neurons, n_neurons)
-        Row-normalised transition matrix (transition probabilities).
-    stability : float
-        Fraction of consecutive pattern pairs that share the same BMU.
-    mean_path_length : float
-        Mean Euclidean grid distance between consecutive BMU positions.
-    mean_chebyshev_jump : float
-        Mean Chebyshev (L∞) grid distance between consecutive BMU positions.
-        Chebyshev distance counts diagonal steps as 1, matching the 8-neighbour
-        topology of the SOM grid.
-    temporal_coherence : float
-        Fraction of consecutive pattern pairs whose BMUs are the same neuron or
-        immediate neighbours (Chebyshev distance ≤ 1).  A value of 1.0 means
-        every step stays within the local neighbourhood; a standard SOM on
-        non-stationary data typically achieves 0.4–0.6, while a well-tuned
-        RSOM approaches 1.0 on smooth temporal sequences.
+    Assumes classification patterns are time-ordered (e.g. windowed biosignals).
+    Key attributes: trajectory, transition_matrix, stability, mean_path_length,
+    mean_chebyshev_jump, temporal_coherence.
     """
 
     def __init__(self, classification):
@@ -61,14 +25,12 @@ class TemporalAnalysis:
         self.map_size = classification.activations_map.shape[0]
         n_neurons = self.map_size ** 2
 
-        # Build ordered trajectory
         self.trajectory = [
             (int(cm['x'].iloc[i]), int(cm['y'].iloc[i]))
             for i in range(len(cm))
         ]
         n = len(self.trajectory)
 
-        # Transition matrix
         T = np.zeros((n_neurons, n_neurons), dtype=int)
         for t in range(n - 1):
             i = self.trajectory[t][0]     * self.map_size + self.trajectory[t][1]
@@ -82,7 +44,6 @@ class TemporalAnalysis:
                 row_sums > 0, T / row_sums, 0.0
             )
 
-        # Stability
         if n > 1:
             same = sum(
                 1 for t in range(n - 1)
@@ -92,7 +53,6 @@ class TemporalAnalysis:
         else:
             self.stability = 1.0
 
-        # Mean path length (Euclidean grid distance)
         if n > 1:
             dists = [
                 np.sqrt(
@@ -105,10 +65,7 @@ class TemporalAnalysis:
         else:
             self.mean_path_length = 0.0
 
-        # Chebyshev (L∞) jump distances and Temporal Coherence
-        # TC = fraction of consecutive steps with Chebyshev distance ≤ 1,
-        # i.e. the BMU stays in the same neuron or moves to an immediate
-        # neighbour (including diagonals) — matching the 8-neighbour SOM grid.
+        # Temporal coherence = fraction of steps with Chebyshev jump ≤ 1 (same or immediate neighbour).
         if n > 1:
             chebyshev_jumps = [
                 max(abs(self.trajectory[t][0] - self.trajectory[t + 1][0]),
@@ -128,10 +85,7 @@ class TemporalAnalysis:
     # ------------------------------------------------------------------
 
     def most_frequent_transitions(self, top_k=10):
-        """Return the top-k most frequent transitions as a list of dicts.
-
-        Each dict has keys 'from' (row, col), 'to' (row, col), 'count'.
-        """
+        """Top-k transitions as list of dicts with keys 'from', 'to', 'count'."""
         flat = [
             (i // self.map_size, i % self.map_size,
              j // self.map_size, j % self.map_size,
@@ -147,8 +101,7 @@ class TemporalAnalysis:
         ]
 
     def dwell_times(self):
-        """Return a dict mapping each BMU (row, col) to its mean consecutive
-        dwell time (number of steps the SOM stays on that neuron)."""
+        """Mean consecutive dwell time (steps) per BMU (row, col)."""
         dwell = {}
         t = 0
         n = len(self.trajectory)
@@ -164,14 +117,7 @@ class TemporalAnalysis:
         return {pos: float(np.mean(runs)) for pos, runs in dwell.items()}
 
     def summary(self) -> str:
-        """Return a short human-readable summary string.
-
-        The summary is also emitted at INFO level via the standard logging
-        framework so library users can control visibility with their own
-        logging configuration.
-
-        :return: formatted summary string
-        """
+        """Human-readable summary of temporal metrics; also logged at INFO."""
         top = self.most_frequent_transitions(3)
         transitions = "\n".join(
             f"  {tr['from']} → {tr['to']}  ({tr['count']} times)" for tr in top

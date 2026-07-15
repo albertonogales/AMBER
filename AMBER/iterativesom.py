@@ -19,18 +19,15 @@ class IterativeSOM:
                  random_seed=None,
                  validation_data=None):
         """
-        :param data: numpy array of training data (samples x features)
+        :param data: (n_samples, n_features) training array
         :param period: number of training iterations per map
         :param initial_lr: initial learning rate
-        :param size_range: list or range of map sizes to try; defaults to ±2 around Vesanto size
-        :param give_best: if True, self.best_map holds the map with lowest quantization error
-        :param random_seed: base random seed for reproducibility; each map receives
-            ``random_seed + i`` so maps are independent but deterministic
-        :param validation_data: optional held-out data for model selection; if None,
-            training data is used (standard SOM practice — QE is a reconstruction metric)
+        :param size_range: map sizes to try; defaults to ±2 around Vesanto size
+        :param give_best: if True, self.best_map holds the map with lowest QE
+        :param random_seed: base seed; each map gets random_seed+i for independence
+        :param validation_data: held-out data for model selection; None = use training data
         """
         if size_range is None:
-            # Default range: ±2 around the Vesanto recommended size
             recommended = vesanto_size(data.shape[0])
             size_range = range(max(2, recommended - 2), recommended + 3)
 

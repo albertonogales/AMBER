@@ -1,13 +1,10 @@
 """
-Signal-space distance functions for AMBER.
+Signal-space and grid-space distance functions for AMBER SOMs.
 
-Two families are provided:
-
-  Signal distances  — compare weight vectors to an input pattern; used for BMU search.
-  Grid distances    — compare 2-D neuron positions on the map grid; used for neighbourhood update.
-
-Vectorised matrix functions are provided for all distances except DTW and cross-correlation,
-which require a per-neuron loop due to their sequential nature.
+Signal distances compare weight vectors to input patterns (BMU search);
+grid distances compare 2-D neuron positions (neighbourhood update).
+DTW uses L2 squared local cost + sqrt, equivalent to tslearn.metrics.dtw
+(Berndt & Clifford, 1994).
 """
 
 from __future__ import annotations
@@ -16,7 +13,6 @@ from typing import Any, Callable, Dict
 
 import numpy as np
 
-# Type aliases for distance functions
 MatrixDistFn = Callable[..., Any]
 ScalarDistFn = Callable[..., Any]
 
@@ -49,8 +45,7 @@ def cosine_distance(a, b):
 
 
 def correlation_distance(a, b):
-    """``1 - abs(Pearson correlation)``. Pure shape similarity; ignores mean and amplitude.
-    Ideal for comparing waveform morphology across subjects or sessions."""
+    """1 - |Pearson correlation|. Shape similarity only; ignores mean and amplitude."""
     a_c = a - a.mean()
     b_c = b - b.mean()
     norm_a = np.linalg.norm(a_c)
@@ -61,18 +56,9 @@ def correlation_distance(a, b):
 
 
 def dtw_distance(a, b, band=None):
-    """Dynamic Time Warping distance with optional Sakoe-Chiba band constraint.
+    """L2 DTW distance. Equals Euclidean when the warping path is the identity.
 
-    Handles temporal misalignment between signals — the standard choice for
-    biosignals (ECG, EEG) and audio where patterns may be stretched or shifted
-    in time.
-
-    :param a: 1-D array, first signal
-    :param b: 1-D array, second signal
     :param band: Sakoe-Chiba half-width in samples (None = unconstrained).
-                 Constraining the band greatly reduces O(n²) cost; a value of
-                 10–20 % of signal length is a good default for biosignals.
-    :return: DTW distance (scalar)
     """
     n, m = len(a), len(b)
     dtw_matrix = np.full((n + 1, m + 1), np.inf)
@@ -93,20 +79,7 @@ def dtw_distance(a, b, band=None):
 
 
 def cross_correlation_distance(a, b):
-    """1 - peak of normalised cross-correlation. Shift-invariant similarity.
-
-    Suitable for periodic biosignals (ECG beats, EEG oscillations) where the
-    pattern of interest may appear at different phases across windows.
-
-    Both inputs are L2-normalised before correlation.  By the Cauchy-Schwarz
-    inequality every lag of ``np.correlate(a_n, b_n, 'full')`` is bounded by
-    the product of the partial L2-norms of the two sub-vectors, which are each
-    ≤ 1, so ``max|xcorr| ∈ [0, 1]`` and the returned distance is in ``[0, 1]``.
-
-    :param a: 1-D array
-    :param b: 1-D array
-    :return: distance in [0, 1]; 0 means perfect match at some lag
-    """
+    """1 - peak normalised cross-correlation. Shift-invariant; distance in [0, 1]."""
     norm_a = np.linalg.norm(a)
     norm_b = np.linalg.norm(b)
     if norm_a == 0 or norm_b == 0:
@@ -114,7 +87,7 @@ def cross_correlation_distance(a, b):
     a_n = a / norm_a
     b_n = b / norm_b
     xcorr = np.correlate(a_n, b_n, mode='full')
-    return 1.0 - float(np.max(np.abs(xcorr)))
+    return float(max(0.0, 1.0 - np.max(np.abs(xcorr))))
 
 
 # ---------------------------------------------------------------------------
@@ -139,13 +112,12 @@ def chebyshev_distance_matrix(weights, pattern):
 def cosine_distance_matrix(weights, pattern):
     """(rows, cols) cosine distances. Vectorised over the full grid."""
     rows, cols, dim = weights.shape
-    w_flat = weights.reshape(-1, dim)          # (rows*cols, dim)
-    norms_w = np.linalg.norm(w_flat, axis=1)  # (rows*cols,)
+    w_flat = weights.reshape(-1, dim)
+    norms_w = np.linalg.norm(w_flat, axis=1)
     norm_p  = np.linalg.norm(pattern)
     denom = norms_w * norm_p
-    # where denominator is zero, distance is 1
     with np.errstate(invalid='ignore', divide='ignore'):
-        dots = w_flat @ pattern                # (rows*cols,)
+        dots = w_flat @ pattern
         dist = np.where(denom == 0, 1.0, 1.0 - dots / denom)
     return dist.reshape(rows, cols)
 
@@ -166,7 +138,7 @@ def correlation_distance_matrix(weights, pattern):
 
 
 def dtw_distance_matrix(weights, pattern, band=None):
-    """(rows, cols) DTW distances. Requires a per-neuron loop."""
+    """(rows, cols) L2 DTW distances. Requires a per-neuron loop (sequential nature of DTW)."""
     rows, cols, _ = weights.shape
     dist = np.empty((rows, cols))
     for i in range(rows):

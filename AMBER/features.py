@@ -1,23 +1,13 @@
 """
 Feature extraction for time series (biosignals, audio).
 
-Provides a FeatureExtractor class that converts raw signal windows into
-fixed-length feature vectors suitable for Map.train / Map.classify.
-
-Three feature families:
-  Statistical  — amplitude and shape descriptors, no sampling-frequency needed
-  Spectral     — frequency-domain descriptors; require fs to be set
-  Complexity   — nonlinear / information-theoretic measures
-
-Optional dependency:
-  librosa — required only for 'mfcc'; install with: pip install librosa
-  scipy   — improves accuracy of skewness/kurtosis and PSD estimation (Welch);
-            falls back to numpy-only implementations when absent
+FeatureExtractor converts raw signal windows into fixed-length vectors for Map.train/classify.
+Requires librosa for 'mfcc'; scipy improves spectral accuracy but falls back to numpy.
 """
 
 import numpy as np
 
-# np.trapezoid was introduced in NumPy 2.0; np.trapz was removed in NumPy 2.0.
+# np.trapezoid introduced in NumPy 2.0; np.trapz removed in NumPy 2.0.
 _trapz = getattr(np, 'trapezoid', None) or getattr(np, 'trapz')
 
 try:
@@ -34,10 +24,6 @@ except ImportError:
     _LIBROSA = False
 
 
-# ---------------------------------------------------------------------------
-# EEG band definitions (Hz) — can be overridden by the user
-# ---------------------------------------------------------------------------
-
 EEG_BANDS = {
     'delta': (0.5,  4.0),
     'theta': (4.0,  8.0),
@@ -47,39 +33,23 @@ EEG_BANDS = {
 }
 
 
-# ---------------------------------------------------------------------------
-# FeatureExtractor class
-# ---------------------------------------------------------------------------
-
 class FeatureExtractor:
     """Extracts a flat feature vector from a 1-D signal window.
 
     Usage::
 
         fe = FeatureExtractor(fs=256)
-
-        # single window → 1-D feature vector
         x = fe.extract(signal, features=['rms', 'spectral_entropy', 'hjorth_activity'])
-
-        # batch of windows → (n_windows, n_features) array ready for Map.train
         X = fe.extract_batch(windows, features=['rms', 'zero_crossing_rate', 'alpha_power'])
 
     Available features
     ------------------
-    Statistical (no fs needed):
-        mean, std, var, skewness, kurtosis, rms, peak_to_peak,
+    Statistical (no fs): mean, std, var, skewness, kurtosis, rms, peak_to_peak,
         zero_crossing_rate, line_length
-
-    Spectral (fs required):
-        spectral_power, dominant_frequency, spectral_entropy,
-        spectral_centroid, spectral_rolloff,
-        delta_power, theta_power, alpha_power, beta_power, gamma_power
-
-    Complexity (no fs needed):
-        hjorth_activity, hjorth_mobility, hjorth_complexity, sample_entropy
-
-    Librosa (fs + librosa required):
-        mfcc  →  produces n_mfcc values (mean of each coefficient over time)
+    Spectral (fs required): spectral_power, dominant_frequency, spectral_entropy,
+        spectral_centroid, spectral_rolloff, delta/theta/alpha/beta/gamma_power
+    Complexity: hjorth_activity, hjorth_mobility, hjorth_complexity, sample_entropy
+    Librosa (fs + librosa): mfcc → n_mfcc values
     """
 
     STATISTICAL = frozenset({
@@ -101,12 +71,12 @@ class FeatureExtractor:
                  spectral_rolloff_pct=0.85, eeg_bands=None):
         """
         :param fs: sampling frequency in Hz (required for spectral features)
-        :param n_mfcc: number of MFCC coefficients returned by 'mfcc'
-        :param mfcc_hop_length: hop length for MFCC computation (librosa)
+        :param n_mfcc: number of MFCC coefficients
+        :param mfcc_hop_length: librosa hop length for MFCC
         :param sample_entropy_m: template length for sample entropy
-        :param sample_entropy_r: tolerance for sample entropy (None → 0.2·std)
-        :param spectral_rolloff_pct: cumulative power threshold for spectral rolloff
-        :param eeg_bands: dict overriding EEG_BANDS (e.g. for non-standard bands)
+        :param sample_entropy_r: tolerance (None → 0.2·std)
+        :param spectral_rolloff_pct: cumulative power threshold for rolloff
+        :param eeg_bands: dict overriding EEG_BANDS
         """
         self.fs = fs
         self.n_mfcc = n_mfcc
@@ -123,8 +93,7 @@ class FeatureExtractor:
     def extract(self, signal, features=None):
         """Extract a 1-D feature vector from a single signal window.
 
-        :param signal: 1-D array-like
-        :param features: list of feature names; None → all statistical + complexity
+        :param features: feature name list; None → all statistical + complexity
         :return: 1-D numpy array
         """
         x = np.asarray(signal, dtype=float)
@@ -144,7 +113,7 @@ class FeatureExtractor:
         """Extract features from a 2-D batch of signal windows.
 
         :param signals: (n_windows, window_length) array-like
-        :param features: list of feature names; None → all statistical + complexity
+        :param features: feature name list; None → all statistical + complexity
         :return: (n_windows, n_features) numpy array
         """
         signals = np.asarray(signals, dtype=float)
@@ -152,10 +121,7 @@ class FeatureExtractor:
         return np.stack(rows, axis=0)
 
     def feature_names(self, features=None):
-        """Return feature names in the same order as extract().
-
-        Multi-valued features (mfcc) are expanded to individual names.
-        """
+        """Feature names in the same order as extract(); mfcc expands to mfcc_0…mfcc_N."""
         if features is None:
             features = sorted(self.STATISTICAL | self.COMPLEXITY)
         names = []
@@ -224,31 +190,19 @@ class FeatureExtractor:
 # ---------------------------------------------------------------------------
 
 def zero_crossing_rate(x):
-    """Fraction of samples where the signal crosses zero.
-
-    Useful for distinguishing voiced/unvoiced speech and estimating
-    oscillation frequency without spectral analysis.
-    """
+    """Fraction of samples where the signal crosses zero."""
     return np.sum(np.abs(np.diff(np.sign(x)))) / (2.0 * (len(x) - 1))
 
 
 def line_length(x):
-    """Sum of absolute sample-to-sample differences.
-
-    Proportional to signal complexity; widely used in epilepsy detection
-    to discriminate ictal from interictal activity.
-    """
+    """Sum of absolute sample-to-sample differences; widely used in epilepsy detection."""
     return float(np.sum(np.abs(np.diff(x))))
 
 
 def hjorth_parameters(x):
     """Hjorth activity, mobility, and complexity.
 
-    - Activity   : variance of the signal (power estimate)
-    - Mobility   : ratio of std of 1st derivative to std of signal;
-                   proportional to mean frequency
-    - Complexity : ratio of mobility of 1st derivative to mobility of signal;
-                   indicates similarity to a pure sine wave (value = 1)
+    Activity = variance; mobility ∝ mean frequency; complexity = similarity to a sine (=1).
 
     :return: (activity, mobility, complexity) tuple of floats
     """
@@ -264,15 +218,12 @@ def hjorth_parameters(x):
 
 
 def sample_entropy(x, m=2, r=None):
-    """Sample entropy — a regularity measure robust to signal length.
+    """Regularity measure robust to signal length; lower = more predictable.
 
-    Lower values indicate more regular (predictable) signals.
-    Complexity O(N²·m); avoid on very long windows (>2000 samples).
+    O(N²·m); avoid on windows >2000 samples.
 
-    :param x: 1-D signal array
     :param m: template length (2 is standard)
-    :param r: similarity tolerance (None → 0.2 · std(x))
-    :return: sample entropy (float); 0.0 if undefined
+    :param r: similarity tolerance (None → 0.2·std)
     """
     x = np.asarray(x, dtype=float)
     if r is None:
@@ -283,7 +234,6 @@ def sample_entropy(x, m=2, r=None):
         count = 0
         for i in range(N - length):
             template = x[i:i + length]
-            # compare with all subsequent templates to avoid self-match
             for j in range(i + 1, N - length):
                 if np.max(np.abs(x[j:j + length] - template)) < r:
                     count += 1
@@ -317,8 +267,7 @@ def _kurtosis(x):
 # ---------------------------------------------------------------------------
 
 def _psd(x, fs):
-    """Estimate power spectral density.  Uses Welch's method when scipy is
-    available; falls back to a periodogram via numpy FFT otherwise."""
+    """PSD via Welch (scipy) or periodogram (numpy fallback)."""
     if _SCIPY:
         return _sp_signal.welch(x, fs=fs, nperseg=min(256, len(x)))
     n = len(x)
@@ -340,11 +289,7 @@ def dominant_frequency(x, fs):
 
 
 def spectral_entropy(x, fs):
-    """Shannon entropy of the normalised PSD.
-
-    Measures spectral complexity: low for a narrow-band signal (e.g. a pure
-    tone or a strong alpha rhythm), high for broadband noise.
-    """
+    """Shannon entropy of the normalised PSD; low for narrow-band, high for broadband."""
     _, psd = _psd(x, fs)
     total = psd.sum()
     if total == 0:
@@ -354,18 +299,14 @@ def spectral_entropy(x, fs):
 
 
 def spectral_centroid(x, fs):
-    """Frequency-weighted mean of the PSD — the 'centre of mass' of the spectrum."""
+    """Frequency-weighted mean of the PSD (centre of mass of the spectrum)."""
     freqs, psd = _psd(x, fs)
     total = psd.sum()
     return float(np.sum(freqs * psd) / total) if total > 0 else 0.0
 
 
 def spectral_rolloff(x, fs, pct=0.85):
-    """Frequency below which `pct` of the total spectral power is contained.
-
-    Useful for distinguishing voiced/unvoiced speech and for audio genre
-    classification.
-    """
+    """Frequency below which pct of total spectral power is contained."""
     freqs, psd = _psd(x, fs)
     cumsum = np.cumsum(psd)
     idx = np.searchsorted(cumsum, pct * cumsum[-1])
@@ -373,10 +314,7 @@ def spectral_rolloff(x, fs, pct=0.85):
 
 
 def band_power(x, fs, f_low, f_high):
-    """Integrate PSD within a frequency band [f_low, f_high] Hz.
-
-    Standard measure for EEG rhythms (delta, theta, alpha, beta, gamma).
-    """
+    """Integrate PSD over [f_low, f_high] Hz; standard for EEG rhythm analysis."""
     freqs, psd = _psd(x, fs)
     mask = (freqs >= f_low) & (freqs <= f_high)
     if not mask.any():
@@ -389,13 +327,7 @@ def band_power(x, fs, f_low, f_high):
 # ---------------------------------------------------------------------------
 
 def compute_mfcc(x, fs, n_mfcc=13, hop_length=512):
-    """Mean MFCC coefficients over a signal window.
-
-    Returns a vector of length `n_mfcc`. Requires librosa.
-
-    MFCCs capture the shape of the spectral envelope and are the standard
-    feature for speech and audio classification.
-    """
+    """Mean MFCC coefficients over a window; returns length-n_mfcc vector. Requires librosa."""
     if not _LIBROSA:
         raise ImportError(
             "librosa is required for MFCC computation. "

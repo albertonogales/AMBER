@@ -18,40 +18,25 @@ except ImportError:
 
 
 class Visualization:
-    """Static collection of plotting helpers for trained SOMs.
+    """Static plotting helpers for trained SOMs; no instance needed."""
 
-    All methods are ``@staticmethod`` — no instance is needed::
-
-        Visualization.heat_map(classification)
-        Visualization.umatrix(classification)
-    """
-
-    # HEAT MAP
     @staticmethod
     def heat_map(classification, filename='heat_map', colorscale='Reds', cmax=0):
-        """Annotated heatmap of BMU activation counts across the SOM grid.
+        """Annotated heatmap of BMU activation counts.
 
-        :param classification: a completed :class:`~AMBER.Classification` instance
-        :param filename: Plotly filename / title (default ``'heat_map'``)
-        :param colorscale: Plotly colorscale name (default ``'Reds'``)
-        :param cmax: maximum value for the colour scale; 0 = auto-scale to data maximum
+        :param cmax: colour scale max; 0 = auto-scale to data maximum.
         """
-        # MODIFIED. Activation map rotated 90º so it matches with the Heat Map visualisation
+        # Transpose so grid orientation matches the heatmap visualisation.
         map_rot = np.transpose(classification.activations_map)
         cmax = np.max(classification.activations_map) if cmax == 0 else cmax
         fig = ff.create_annotated_heatmap(map_rot, showscale=True, colorscale=colorscale, zmin=0, zmax=cmax)
 
         pio.show(fig)
 
-    # ELEVATION MAP
     @staticmethod
     def elevation_map(classification, filename='elevation_map'):
-        """3-D surface plot of BMU activation counts (elevation = activation frequency).
-
-        :param classification: a completed :class:`~AMBER.Classification` instance
-        :param filename: Plotly filename / title (default ``'elevation_map'``)
-        """
-        # MODIFIED. Activation map rotated 90º so it matches with the Elevation Map visualisation
+        """3-D surface plot of BMU activation counts."""
+        # Rotate 90° to match elevation map orientation convention.
         map_rot = np.rot90(classification.activations_map, k=-1)
 
         data = [
@@ -75,18 +60,12 @@ class Visualization:
         fig = go.Figure(data=data, layout=layout)
         pio.show(fig)
 
-    # CHARACTERISTICS GRAPH
     @staticmethod
     def characteristics_graph(map, row, column, labels=np.array([]), size_x=10, size_y=10, angle=45):
-        """Line plot of the weight vector for a single neuron.
+        """Line plot of the weight vector for neuron [row, column].
 
-        :param map: a trained :class:`~AMBER.Map` instance
-        :param row: row index of the neuron
-        :param column: column index of the neuron
-        :param labels: feature-name labels for the x-axis (optional)
-        :param size_x: figure width in inches (default 10)
-        :param size_y: figure height in inches (default 10)
-        :param angle: x-tick label rotation in degrees (default 45)
+        :param labels: optional feature-name labels for the x-axis
+        :param angle: x-tick label rotation in degrees
         """
         map.characteristics_data_labels = labels
 
@@ -96,21 +75,12 @@ class Visualization:
             plt.xticks(np.arange(map.input_data_dimension), map.characteristics_data_labels, rotation=angle)
         display(plt.plot(data, label='[' + str(row) + ',' + str(column) + ']'))
 
-    # CHARACTERISTICS BAR GRAPH
     @staticmethod
     def characteristics_bargraph(map, row, column, labels=np.array([]), size_x=10, size_y=10, angle=45):
-        """Colour-coded bar chart of the weight vector for a single neuron.
+        """Colour-coded bar chart of the weight vector for neuron [row, column].
 
-        Each bar corresponds to one input feature; bars are coloured with the
-        ``tab20`` colormap for easy visual discrimination.
-
-        :param map: a trained :class:`~AMBER.Map` instance
-        :param row: row index of the neuron
-        :param column: column index of the neuron
-        :param labels: feature-name labels for the x-axis (optional)
-        :param size_x: figure width in inches (default 10)
-        :param size_y: figure height in inches (default 10)
-        :param angle: x-tick label rotation in degrees (default 45)
+        :param labels: optional feature-name labels for the x-axis
+        :param angle: x-tick label rotation in degrees
         """
         map.characteristics_data_labels = labels
 
@@ -122,14 +92,9 @@ class Visualization:
         display(plt.bar(np.arange(data.shape[0]), data, label='[' + str(row) + ',' + str(column) + ']',
                         color=rainbow(np.linspace(0, 1, data.shape[0]))))
 
-    # BAR CHART
     @staticmethod
     def bar_chart(data, filename='bar_chart'):
-        """Interactive bar chart of an arbitrary 1-D data array (Plotly).
-
-        :param data: array-like of values to plot
-        :param filename: Plotly filename / title (default ``'bar_chart'``)
-        """
+        """Interactive Plotly bar chart of a 1-D data array."""
         data_np = np.asarray(data).reshape(-1)
         data_bar = [go.Bar(y=data_np)]
         layout = {
@@ -139,16 +104,11 @@ class Visualization:
         }
         pio.show({"data": data_bar, "layout": layout})
 
-    # NEURONS PER NUM ACTIVATIONS
     @staticmethod
     def neurons_per_num_activations_map(classification, filename='neurons_per_num_activations_map', save=False):
-        """Bar chart of the number of neurons activated exactly k times, for k = 0 … max.
+        """Bar chart of neurons activated exactly k times, for k = 0…max.
 
-        Useful for diagnosing dead neurons (activated 0 times) and over-used neurons.
-
-        :param classification: a completed :class:`~AMBER.Classification` instance
-        :param filename: Plotly filename / title
-        :param save: unused (reserved for future file-export support)
+        Useful for diagnosing dead neurons and over-used neurons.
         """
         num_max_activations = np.max(classification.activations_map) + 1
         neurons_per_num_activations = np.zeros(num_max_activations)
@@ -160,16 +120,10 @@ class Visualization:
 
     @staticmethod
     def codebook_vector(map, index=0, header='none', filename='codebook_vector'):
-        """Annotated heatmap of a single codebook (weight) dimension across all neurons.
+        """Annotated heatmap of feature index across all neurons.
 
-        Displays the value of feature ``index`` for every neuron in the grid,
-        useful for understanding how a particular input dimension is distributed
-        across the map.
-
-        :param map: a trained :class:`~AMBER.Map` instance
-        :param index: feature index to display (default 0)
-        :param header: plot title; ``'none'`` suppresses the title
-        :param filename: Plotly filename (default ``'codebook_vector'``)
+        :param index: feature index to display
+        :param header: plot title; 'none' suppresses title
         """
         map_rot = np.transpose(np.around(map.weights[:, :, index], decimals=2))
 
@@ -177,7 +131,6 @@ class Visualization:
         if header != 'none':
             fig.layout.title = header
 
-        # Make text size smaller
         for i in range(len(fig.layout.annotations)):
             fig.layout.annotations[i].font.size = 7
 
@@ -185,11 +138,7 @@ class Visualization:
 
     @staticmethod
     def codebook_vectors(map, headers=np.array([])):
-        """Plot :meth:`codebook_vector` for every input dimension of the map.
-
-        :param map: a trained :class:`~AMBER.Map` instance
-        :param headers: feature names used as plot titles; defaults to ``0, 1, …, D-1``
-        """
+        """Plot codebook_vector for every input dimension of the map."""
         if headers.size < 1:
             headers = np.arange(map.input_data_dimension)
         for i in range(0, map.input_data_dimension):
@@ -197,41 +146,22 @@ class Visualization:
 
     @staticmethod
     def umatrix(classification, colorscale='binary'):
-        """Display the U-matrix (unified distance matrix) of the trained map.
-
-        Each cell in the U-matrix encodes the mean distance between a neuron and
-        its neighbours; dark regions indicate cluster boundaries.
-
-        :param classification: a completed :class:`~AMBER.Classification` instance
-        :param colorscale: matplotlib colormap name (default ``'binary'``)
-        """
+        """Display the U-matrix; dark regions indicate cluster boundaries."""
         plt.imshow(np.rot90(classification.umatriz), cmap=colorscale)
         plt.colorbar()
 
     @staticmethod
     def umatrix_labeled(classification, labels, class_names=None, palette=None,
                         figsize=(8, 9), title=None, filename=None):
-        """U-matrix overlaid with majority-class markers for each neuron.
+        """U-matrix with majority-class circle markers per neuron.
 
-        Combines topology (greyscale U-matrix background) with semantics
-        (coloured circle markers showing the majority class and sample count
-        of each active neuron).  The legend is placed between the title and
-        the axes so it never overlaps neuron markers.
+        Legend is placed between title and axes to avoid overlapping markers.
 
-        :param classification: a completed :class:`~AMBER.Classification` instance.
-            Must have been created with ``tagged=True`` so that
-            ``classification_map['labels']`` contains integer class codes.
-        :param labels: 1-D array-like of integer class codes, one per sample,
-            used to build the legend (values must match those stored in
-            ``classification_map['labels']``).
-        :param class_names: list of human-readable class names in class-code
-            order.  If ``None``, names default to ``'Class 0'``, ``'Class 1'``, …
-        :param palette: list of matplotlib colour strings in class-code order.
-            If ``None``, the ``tab10`` colormap is used.
-        :param figsize: figure size in inches (default ``(8, 9)``).
-        :param title: figure suptitle.  If ``None``, a generic title is used.
-        :param filename: if given, save the figure to this path (PNG/PDF/…).
-            If ``None``, the figure is displayed with ``plt.show()``.
+        :param classification: Classification with tagged=True
+        :param labels: 1-D array of integer class codes, one per sample
+        :param class_names: human-readable names in class-code order; defaults to 'Class N'
+        :param palette: matplotlib colour strings in class-code order; defaults to tab10
+        :param filename: save path; None → plt.show()
         """
         cm_df   = classification.classification_map
         k       = classification.activations_map.shape[0]
@@ -248,7 +178,6 @@ class Visualization:
         col_map  = {c: palette[i]     for i, c in enumerate(classes)}
         name_map = {c: class_names[i] for i, c in enumerate(classes)}
 
-        # majority class and count per neuron
         majority, counts = {}, {}
         for (r, c), grp in cm_df.groupby(['x', 'y']):
             vc = grp['labels'].value_counts()
@@ -257,7 +186,6 @@ class Visualization:
 
         fig = plt.figure(figsize=figsize)
 
-        # legend between title and axes
         handles = [mpatches.Patch(color=col_map[c], label=name_map[c])
                    for c in classes]
         fig.legend(handles=handles, loc='upper center', ncol=n_cls,
@@ -300,25 +228,15 @@ class Visualization:
     @staticmethod
     def hit_map(classification, labels, class_names=None, palette=None,
                 figsize=(10, 9), title=None, filename=None):
-        """Hit map where cell size encodes sample count and colour encodes majority class.
+        """Hit map: cell size encodes sample count, colour encodes majority class.
 
-        Each neuron cell is drawn as a coloured square whose side length scales
-        with ``sqrt(n / n_max)``, so high-load neurons appear larger and dead
-        neurons (no samples) are shown as an empty grey background cell.  A
-        light-tinted background fills the full cell area with the majority-class
-        colour, providing an additional visual cue.
+        Cell side scales with sqrt(n/n_max); dead neurons shown as empty grey cells.
 
-        :param classification: a completed :class:`~AMBER.Classification` instance.
-            Must have been created with ``tagged=True``.
-        :param labels: 1-D array-like of integer class codes, one per sample.
-        :param class_names: list of human-readable class names in class-code
-            order.  Defaults to ``'Class 0'``, ``'Class 1'``, …
-        :param palette: list of matplotlib colour strings in class-code order.
-            Defaults to the ``tab10`` colormap.
-        :param figsize: figure size in inches (default ``(10, 9)``).
-        :param title: figure suptitle.  If ``None``, a generic title is used.
-        :param filename: if given, save the figure to this path; otherwise
-            ``plt.show()`` is called.
+        :param classification: Classification with tagged=True
+        :param labels: 1-D array of integer class codes, one per sample
+        :param class_names: human-readable names; defaults to 'Class N'
+        :param palette: matplotlib colours in class-code order; defaults to tab10
+        :param filename: save path; None → plt.show()
         """
         cm_df   = classification.classification_map
         k       = classification.activations_map.shape[0]
@@ -372,7 +290,6 @@ class Visualization:
         ax.set_ylabel('Neuron row',    fontsize=11)
         ax.grid(True, linewidth=0.5, color='white', zorder=0)
 
-        # legend above axes (2 rows if many classes)
         ncol_leg = min(n_cls, 5)
         handles  = [mpatches.Patch(color=col_map[c], label=name_map[c])
                     for c in classes]
@@ -392,27 +309,17 @@ class Visualization:
     @staticmethod
     def weight_map_grid(som, classification, labels, class_names=None,
                         palette=None, figsize=None, title=None, filename=None):
-        """Grid of weight-vector profiles coloured by majority class.
+        """Grid of weight-vector profiles (one subplot per neuron) coloured by majority class.
 
-        Produces a ``map_size × map_size`` panel of subplots.  Each subplot
-        shows the weight vector of one neuron as a line plot.  The subplot
-        background is tinted with the majority-class colour; dead neurons
-        (no assigned samples) are shown with a neutral grey background.  The
-        neuron address ``[row, col]`` and sample count ``n=…`` are annotated
-        inside each cell.
+        Dead neurons show a neutral grey background.
 
-        :param som: a trained :class:`~AMBER.Map` instance.
-        :param classification: a completed :class:`~AMBER.Classification`
-            instance created with ``tagged=True``.
-        :param labels: 1-D array-like of integer class codes, one per sample.
-        :param class_names: list of human-readable class names in class-code
-            order.  Defaults to ``'Class 0'``, ``'Class 1'``, …
-        :param palette: list of matplotlib colour strings in class-code order.
-            Defaults to the ``tab10`` colormap.
-        :param figsize: figure size in inches.  Defaults to
-            ``(2.4 * map_size, 1.9 * map_size)``.
-        :param title: figure suptitle.  Defaults to a generic title.
-        :param filename: if given, save to this path; otherwise ``plt.show()``.
+        :param som: trained Map instance
+        :param classification: Classification with tagged=True
+        :param labels: 1-D array of integer class codes, one per sample
+        :param class_names: human-readable names; defaults to 'Class N'
+        :param palette: matplotlib colours in class-code order; defaults to tab10
+        :param figsize: defaults to (2.4*map_size, 1.9*map_size)
+        :param filename: save path; None → plt.show()
         """
         cm_df   = classification.classification_map
         k       = som.map_size
@@ -485,17 +392,7 @@ class Visualization:
 
     @staticmethod
     def full_map_weights(map, labels=np.array([]), size_x=25, size_y=30, filename='full_map_weights'):
-        """Grid of weight-vector line plots — one subplot per neuron.
-
-        Produces a ``map_size × map_size`` panel of weight profiles and saves
-        it to disk as an image file.
-
-        :param map: a trained :class:`~AMBER.Map` instance
-        :param labels: feature-name labels for the x-axis of each subplot
-        :param size_x: total figure width in inches (default 25)
-        :param size_y: total figure height in inches (default 30)
-        :param filename: output file path (no extension); saved via ``fig.savefig``
-        """
+        """Grid of weight-vector line plots saved to disk as an image file."""
         fig, ax = plt.subplots(map.map_size, map.map_size, sharex='col', sharey='row', figsize=(size_x, size_y))
         for i in range(map.map_size):
             for j in range(map.map_size):
@@ -514,22 +411,10 @@ class Visualization:
                    cmap_path='plasma', cmap_bg='YlOrRd',
                    figsize=(7, 7), title='BMU Trajectory',
                    random_seed=None):
-        """Plot the time-ordered sequence of BMU positions on the SOM grid.
+        """Time-ordered BMU path on the SOM grid; early = dark, late = bright.
 
-        The path is drawn as a colour-coded line (early = dark, late = bright)
-        with arrows indicating direction.  The background shows either the
-        activation counts or the U-matrix.
-
-        :param classification:   a completed Classification instance
-        :param temporal_analysis: the matching TemporalAnalysis instance
         :param background: 'activations' or 'umatrix'
-        :param cmap_path: matplotlib colormap for the trajectory line
-        :param cmap_bg:   matplotlib colormap for the background heatmap
-        :param figsize:   figure size in inches
-        :param title:     plot title
-        :param random_seed: seed for the jitter RNG that slightly offsets overlapping
-            trajectory points; pass an integer for a reproducible figure, None for
-            a different jitter each call
+        :param random_seed: seed for jitter that offsets overlapping points
         """
         traj = temporal_analysis.trajectory
         if len(traj) < 2:
@@ -538,7 +423,6 @@ class Visualization:
 
         fig, ax = plt.subplots(figsize=figsize)
 
-        # Background
         if background == 'umatrix':
             bg = classification.umatriz
         else:
@@ -548,13 +432,11 @@ class Visualization:
                   extent=[-0.5, bg.shape[1] - 0.5,
                            bg.shape[0] - 0.5, -0.5])
 
-        # Draw grid lines
         k = classification.activations_map.shape[0]
         for g in range(k + 1):
             ax.axhline(g - 0.5, color='white', linewidth=0.4, alpha=0.4)
             ax.axvline(g - 0.5, color='white', linewidth=0.4, alpha=0.4)
 
-        # Colour-coded path
         rows = np.array([p[0] for p in traj], dtype=float)
         cols = np.array([p[1] for p in traj], dtype=float)
         n    = len(traj)
@@ -578,13 +460,11 @@ class Visualization:
                 )
             )
 
-        # Start / end markers
         ax.plot(cols[0],  rows[0],  'o', color='lime',   markersize=10,
                 zorder=5, label='start')
         ax.plot(cols[-1], rows[-1], 's', color='white',  markersize=10,
                 zorder=5, label='end')
 
-        # Colourbar for time
         sm = plt.cm.ScalarMappable(cmap=cmap,
                                    norm=plt.Normalize(vmin=0, vmax=n - 1))
         sm.set_array([])
@@ -603,14 +483,9 @@ class Visualization:
                                cmap='Blues',
                                figsize=(8, 7),
                                title='Transition Matrix'):
-        """Heatmap of neuron-to-neuron transition frequencies.
+        """Heatmap of neuron-to-neuron transition frequencies or probabilities.
 
-        :param temporal_analysis: a TemporalAnalysis instance
-        :param normalised: if True, shows row-normalised probabilities;
-                           if False, shows raw counts
-        :param cmap:    matplotlib colormap
-        :param figsize: figure size in inches
-        :param title:   plot title
+        :param normalised: True = row-normalised probabilities; False = raw counts
         """
         T = (temporal_analysis.transition_matrix_norm
              if normalised else temporal_analysis.transition_matrix)
@@ -621,7 +496,6 @@ class Visualization:
                      label='Probability' if normalised else 'Count')
 
         k = temporal_analysis.map_size
-        # Mark neuron grid boundaries
         for g in range(0, k ** 2 + 1, k):
             ax.axhline(g - 0.5, color='grey', linewidth=0.5, alpha=0.6)
             ax.axvline(g - 0.5, color='grey', linewidth=0.5, alpha=0.6)
@@ -636,14 +510,7 @@ class Visualization:
     def dwell_time_map(temporal_analysis, classification,
                        cmap='Blues', figsize=(6, 5),
                        title='Mean Dwell Time per Neuron'):
-        """Heatmap showing how long the signal dwells on each BMU on average.
-
-        :param temporal_analysis: a TemporalAnalysis instance
-        :param classification:    the matching Classification instance
-        :param cmap:   matplotlib colormap
-        :param figsize: figure size in inches
-        :param title:   plot title
-        """
+        """Heatmap of mean consecutive dwell time per BMU."""
         k = temporal_analysis.map_size
         dwell_grid = np.zeros((k, k))
         for (row, col), mean_dwell in temporal_analysis.dwell_times().items():
@@ -656,7 +523,6 @@ class Visualization:
         ax.set_xlabel('Column')
         ax.set_ylabel('Row')
 
-        # Annotate cells with values
         for r in range(k):
             for c in range(k):
                 if dwell_grid[r, c] > 0:
