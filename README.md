@@ -1,6 +1,6 @@
 # AMBER
 
-**AMBER** is an open-source Python library for building, training, and analysing **Self-Organizing Maps (SOMs)**.  
+**AMBER** is an open-source Python library for building, training, and analysing **Self-Organizing Maps (SOMs)** developed for time series data.  
 It covers the full workflow — data normalisation, map training, classification, temporal/recurrent SOMs, feature extraction for biosignals, and interactive visualisation.
 
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
