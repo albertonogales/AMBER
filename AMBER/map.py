@@ -50,8 +50,7 @@ class Map:
 
         """Initializing the map requires some information provided
 
-        :param data: numpy array of 2 dimensions. First dimension corresponds to data samples, while the second
-        represents an specific sample's data
+        :param data: :param data: 2-D array of shape (n_samples, n_features)
         :param size: side length of the square map (map will be size×size neurons).
             If None (default), the size is chosen automatically using the Vesanto &
             Alhoniemi (2000) heuristic: side = √(5·√N), where N is the number of
