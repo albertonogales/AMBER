@@ -6,11 +6,6 @@ Two families are provided:
   Signal distances  — compare weight vectors to an input pattern; used for BMU search.
   Grid distances    — compare 2-D neuron positions on the map grid; used for neighbourhood update.
 
-Each signal distance exposes:
-  - a scalar function  foo_distance(a, b)           for single pairs
-  - a matrix function  foo_distance_matrix(W, p)    that returns a (rows, cols) array over the
-                                                     whole weight grid W shaped (rows, cols, dim)
-
 Vectorised matrix functions are provided for all distances except DTW and cross-correlation,
 which require a per-neuron loop due to their sequential nature.
 """
