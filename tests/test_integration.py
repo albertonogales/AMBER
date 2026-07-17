@@ -55,7 +55,7 @@ class TestFullWorkflow:
 
     def test_temporal_map_pipeline(self):
         data = RNG.standard_normal((50, 5))
-        tsom = AMBER.TemporalMap(data=data, size=4, period=30,
+        tsom = AMBER.TemporalMap(data=data, confirm=True, size=4, period=30,
                                  context_weight=0.5, context_influence=0.3)
         tsom.reset_context()
         c = AMBER.Classification(tsom, data)

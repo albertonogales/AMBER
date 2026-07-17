@@ -34,24 +34,31 @@ class TemporalMap(Map):
                  distance: str = 'euclidean',
                  dtw_band: Optional[int] = None,
                  use_decay: bool = False,
+                 lr_decay: str = 'linear',
                  normalization: str = 'none',
                  weights: str = 'random',
                  context_weight: float = 0.5,
                  context_influence: float = 0.5,
-                 random_seed: Optional[int] = None) -> None:
+                 random_seed: Optional[int] = None,
+                 confirm: bool = False) -> None:
         """
         :param context_weight: α — context retention per step (0 = forget, 1 = freeze).
         :param context_influence: β — context vs. signal weight in BMU search (0 = plain SOM).
         :param random_seed: integer for reproducible results; None = non-deterministic.
+        :param confirm: must be True to proceed with training; forces the user to acknowledge
+            that the data meets TemporalMap requirements (single session, temporal order, ≥10 samples).
 
         All other parameters are identical to Map.__init__.
         """
-        assert 0.0 <= context_weight <= 1.0, 'context_weight must be in [0, 1]'
-        assert 0.0 <= context_influence <= 1.0, 'context_influence must be in [0, 1]'
+        if not 0.0 <= context_weight <= 1.0:
+            raise ValueError(f"context_weight must be in [0, 1], got {context_weight}.")
+        if not 0.0 <= context_influence <= 1.0:
+            raise ValueError(f"context_influence must be in [0, 1], got {context_influence}.")
 
         self.context_weight = context_weight
         self.context_influence = context_influence
         self._context = None
+        self._confirm = confirm
 
         # Resolve size before super().__init__ since we pass data=None to defer training.
         if size is None:
@@ -75,6 +82,7 @@ class TemporalMap(Map):
             distance=distance,
             dtw_band=dtw_band,
             use_decay=use_decay,
+            lr_decay=lr_decay,
             normalization=normalization,
             presentation='sequential',  # order must be preserved for temporal context
             weights=weights,
@@ -131,8 +139,46 @@ class TemporalMap(Map):
 
     def train(self, data: np.ndarray) -> None:
         """Train on temporally ordered data; resets context so calls are independent."""
+        self._check_temporal_assumptions(data, self._confirm)
         self.reset_context()
         super().train(data)
+
+    @staticmethod
+    def _check_temporal_assumptions(data: np.ndarray, confirmed: bool) -> None:
+        """Enforce that the user has acknowledged TemporalMap data requirements."""
+        issues = []
+        if data.shape[0] < 10:
+            issues.append(
+                f"  - Too few samples ({data.shape[0]}): the context vector needs at least "
+                f"10 consecutive samples to stabilise."
+            )
+
+        requirement_msg = (
+            "\n"
+            "TemporalMap requires data from a SINGLE continuous sequence (one individual,\n"
+            "one session) in TEMPORAL ORDER. Each row must be one epoch of that stream.\n"
+            "\n"
+            "Before training, verify ALL of the following:\n"
+            "  [1] All samples belong to the same individual / recording session.\n"
+            "  [2] Samples are in chronological order (not shuffled).\n"
+            "  [3] Each row is one epoch from a continuous stream (e.g. a 30-s EEG window).\n"
+            "  [4] You have at least 10 samples (ideally 50+) per sequence.\n"
+            "\n"
+            "For multi-patient data: train a plain Map on all patients, then classify\n"
+            "each patient separately calling tm.reset_context() between sessions.\n"
+            "\n"
+            "Once verified, set confirm=True to proceed with training."
+        )
+
+        if issues:
+            raise ValueError(
+                "\nData does not meet TemporalMap requirements:\n"
+                + "\n".join(issues)
+                + "\n\nTraining aborted."
+            )
+
+        if not confirmed:
+            raise ValueError(requirement_msg)
 
     def reinforce(self, training_data: np.ndarray, reinforcement: int = 0,
                   extension: int = 1, compression: float = 0.5) -> None:
@@ -160,6 +206,7 @@ class TemporalMap(Map):
             'neighbourhood':        self.neighbourhood,
             'normalization':        self.normalization,
             'weights_init':         self.weights_init,
+            'lr_decay':             self.lr_decay,
             'context_weight':       self.context_weight,
             'context_influence':    self.context_influence,
             'random_seed':          self.random_seed,
@@ -188,6 +235,7 @@ class TemporalMap(Map):
             dtw_band=model.get('dtw_band'),
             use_decay=model['use_decay'],
             normalization=model.get('normalization', 'none'),
+            lr_decay=model.get('lr_decay', 'linear'),
             weights=model.get('weights_init', 'random'),
             context_weight=model.get('context_weight', 0.5),
             context_influence=model.get('context_influence', 0.5),
@@ -200,5 +248,6 @@ class TemporalMap(Map):
         tm._norm_params = {k: np.array(v) if isinstance(v, list) else v
                            for k, v in raw_params.items()}
         tm._Map__trained        = True   # type: ignore[attr-defined]  # name-mangled parent attr
+        tm._confirm             = True   # loaded map was already confirmed at training time
         logger.info('Imported successfully')
         return tm

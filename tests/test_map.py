@@ -686,14 +686,14 @@ class TestTemporalMapReinforce:
 
     def test_temporal_map_reinforce_does_not_raise(self, small_data):
         tm = AMBER.TemporalMap(
-            data=small_data, size=3, period=20,
+            data=small_data, confirm=True, size=3, period=20,
             context_weight=0.5, context_influence=0.3,
         )
         tm.reinforce(small_data, reinforcement=1)
 
     def test_temporal_map_reinforce_changes_weights(self, small_data):
         tm = AMBER.TemporalMap(
-            data=small_data, size=3, period=5,
+            data=small_data, confirm=True, size=3, period=5,
             context_weight=0.5, context_influence=0.3,
         )
         weights_before = tm.weights.copy()
@@ -703,7 +703,7 @@ class TestTemporalMapReinforce:
     def test_temporal_map_norm_params_survive_save_load(self, small_data, tmp_path):
         """TemporalMap norm_params must be preserved across JSON save/load."""
         tm = AMBER.TemporalMap(
-            data=small_data, size=3, period=20,
+            data=small_data, confirm=True, size=3, period=20,
             context_weight=0.5, context_influence=0.3,
             normalization='zscore',
         )

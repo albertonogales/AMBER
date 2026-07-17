@@ -12,11 +12,11 @@ from AMBER.map import vesanto_size
 
 class TestTemporalMapInit:
     def test_auto_size_from_data(self, small_data):
-        tm = AMBER.TemporalMap(data=small_data, period=10)
+        tm = AMBER.TemporalMap(data=small_data, confirm=True, period=10)
         assert tm.map_size == vesanto_size(small_data.shape[0])
 
     def test_explicit_size_preserved(self, small_data):
-        tm = AMBER.TemporalMap(data=small_data, size=5, period=10)
+        tm = AMBER.TemporalMap(data=small_data, confirm=True, size=5, period=10)
         assert tm.map_size == 5
 
     def test_error_without_data_and_size(self):
@@ -24,57 +24,57 @@ class TestTemporalMapInit:
             AMBER.TemporalMap(size=None)
 
     def test_context_weight_stored(self, small_data):
-        tm = AMBER.TemporalMap(data=small_data, size=3, period=10, context_weight=0.7)
+        tm = AMBER.TemporalMap(data=small_data, confirm=True, size=3, period=10, context_weight=0.7)
         assert tm.context_weight == 0.7
 
     def test_context_influence_stored(self, small_data):
-        tm = AMBER.TemporalMap(data=small_data, size=3, period=10, context_influence=0.4)
+        tm = AMBER.TemporalMap(data=small_data, confirm=True, size=3, period=10, context_influence=0.4)
         assert tm.context_influence == 0.4
 
     def test_invalid_context_weight_raises(self, small_data):
-        with pytest.raises(AssertionError):
-            AMBER.TemporalMap(data=small_data, size=3, period=10, context_weight=1.5)
+        with pytest.raises(ValueError):
+            AMBER.TemporalMap(data=small_data, confirm=True, size=3, period=10, context_weight=1.5)
 
     def test_invalid_context_influence_raises(self, small_data):
-        with pytest.raises(AssertionError):
-            AMBER.TemporalMap(data=small_data, size=3, period=10, context_influence=-0.1)
+        with pytest.raises(ValueError):
+            AMBER.TemporalMap(data=small_data, confirm=True, size=3, period=10, context_influence=-0.1)
 
     def test_forces_sequential_presentation(self, small_data):
-        tm = AMBER.TemporalMap(data=small_data, size=3, period=10)
+        tm = AMBER.TemporalMap(data=small_data, confirm=True, size=3, period=10)
         assert tm.presentation == 'sequential'
 
     def test_weights_shape_after_init(self, small_data):
-        tm = AMBER.TemporalMap(data=small_data, size=4, period=10)
+        tm = AMBER.TemporalMap(data=small_data, confirm=True, size=4, period=10)
         assert tm.weights.shape == (4, 4, small_data.shape[1])
 
 
 class TestTemporalMapContext:
     def test_context_none_before_bmu(self, small_data):
-        tm = AMBER.TemporalMap(size=4, period=10)
+        tm = AMBER.TemporalMap(size=4, period=10, confirm=True)
         tm.train(small_data)
         tm.reset_context()
         assert tm._context is None
 
     def test_context_set_after_bmu(self, small_data):
-        tm = AMBER.TemporalMap(data=small_data, size=4, period=10)
+        tm = AMBER.TemporalMap(data=small_data, confirm=True, size=4, period=10)
         tm.reset_context()
         tm.calculate_bmu(small_data[0])
         assert tm._context is not None
 
     def test_context_shape(self, small_data):
-        tm = AMBER.TemporalMap(data=small_data, size=4, period=10)
+        tm = AMBER.TemporalMap(data=small_data, confirm=True, size=4, period=10)
         tm.reset_context()
         tm.calculate_bmu(small_data[0])
         assert tm._context.shape == (small_data.shape[1],)
 
     def test_reset_context_clears(self, small_data):
-        tm = AMBER.TemporalMap(data=small_data, size=4, period=10)
+        tm = AMBER.TemporalMap(data=small_data, confirm=True, size=4, period=10)
         tm.calculate_bmu(small_data[0])
         tm.reset_context()
         assert tm._context is None
 
     def test_context_changes_across_steps(self, small_data):
-        tm = AMBER.TemporalMap(data=small_data, size=4, period=10)
+        tm = AMBER.TemporalMap(data=small_data, confirm=True, size=4, period=10)
         tm.reset_context()
         tm.calculate_bmu(small_data[0])
         ctx1 = tm._context.copy()
@@ -85,7 +85,7 @@ class TestTemporalMapContext:
         assert np.all(np.isfinite(ctx2))
 
     def test_train_resets_context(self, small_data):
-        tm = AMBER.TemporalMap(data=small_data, size=4, period=10)
+        tm = AMBER.TemporalMap(data=small_data, confirm=True, size=4, period=10)
         # Manually set context to something non-None
         tm._context = np.ones(small_data.shape[1])
         tm.train(small_data)   # should reset context at the start
@@ -112,7 +112,7 @@ class TestTemporalMapBMU:
         m = AMBER.Map(data=small_data, size=4, period=30)
         tm = AMBER.TemporalMap(
             data=small_data, size=4, period=30,
-            context_influence=0.0,
+            context_influence=0.0, confirm=True,
         )
         # Copy identical weights
         tm.weights = m.weights.copy()
@@ -137,7 +137,7 @@ class TestTemporalMapSerialisation:
     def test_round_trip_temporal_params(self, small_data):
         tm = AMBER.TemporalMap(
             data=small_data, size=4, period=20,
-            context_weight=0.6, context_influence=0.35,
+            context_weight=0.6, context_influence=0.35, confirm=True,
         )
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, 'tmap')
@@ -158,12 +158,12 @@ class TestTemporalMapSerialisation:
 
 class TestTemporalMapReproducibility:
     def test_same_seed_same_weights(self, small_data):
-        tm1 = AMBER.TemporalMap(data=small_data, size=4, period=20, random_seed=42)
-        tm2 = AMBER.TemporalMap(data=small_data, size=4, period=20, random_seed=42)
+        tm1 = AMBER.TemporalMap(data=small_data, confirm=True, size=4, period=20, random_seed=42)
+        tm2 = AMBER.TemporalMap(data=small_data, confirm=True, size=4, period=20, random_seed=42)
         np.testing.assert_array_equal(tm1.weights, tm2.weights)
 
     def test_seed_persisted_in_save_load(self, small_data, tmp_path):
-        tm = AMBER.TemporalMap(data=small_data, size=4, period=10, random_seed=99)
+        tm = AMBER.TemporalMap(data=small_data, confirm=True, size=4, period=10, random_seed=99)
         path = str(tmp_path / 'tmap')
         tm.save_classifier(path)
         loaded = AMBER.TemporalMap.load_classifier(path)

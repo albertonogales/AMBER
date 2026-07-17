@@ -83,4 +83,5 @@ def trained_temporal_map(small_data):
     return AMBER.TemporalMap(
         data=small_data, size=4, period=30,
         context_weight=0.5, context_influence=0.3,
+        confirm=True,
     )

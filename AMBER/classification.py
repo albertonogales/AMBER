@@ -29,12 +29,32 @@ class Classification:
         """
         pd.options.mode.chained_assignment = None
 
+        if classification_data.shape[0] == 0:
+            raise ValueError("classification_data must contain at least one sample.")
+
         if tagged:
+            if classification_data.shape[1] < 2:
+                raise ValueError(
+                    "tagged=True requires at least 2 columns (label + 1 feature), "
+                    f"got {classification_data.shape[1]}."
+                )
             self.classification_labels = classification_data[:, 0]
             self.classification_data = classification_data[:, 1:]
         else:
             self.classification_data = classification_data
             self.classification_labels = np.arange(classification_data.shape[0])
+
+        if self.classification_data.shape[1] != som.input_data_dimension:
+            raise ValueError(
+                f"Feature dimension mismatch: map was trained on "
+                f"{som.input_data_dimension} features, got {self.classification_data.shape[1]}."
+            )
+
+        if not np.all(np.isfinite(self.classification_data)):
+            raise ValueError(
+                "classification_data contains NaN or inf values. "
+                "Check your data or feature extraction pipeline."
+            )
 
         if verbose:
             logger.debug("\n\nTags: \n" + str(self.classification_labels))

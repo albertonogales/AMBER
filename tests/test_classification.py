@@ -84,6 +84,155 @@ class TestTaggedData:
         np.testing.assert_array_equal(c.classification_labels, expected)
 
 
+class TestTaggedParameter:
+    """Edge cases for the tagged=True/False parameter."""
+
+    # --- tagged=False (default) ---
+
+    def test_untagged_data_shape_unchanged(self, trained_map, small_data):
+        """tagged=False: classification_data must equal the input array exactly."""
+        c = AMBER.Classification(trained_map, small_data, tagged=False)
+        np.testing.assert_array_equal(c.classification_data, small_data)
+
+    def test_untagged_labels_are_row_indices(self, trained_map, small_data):
+        """tagged=False: labels are 0..N-1 (sample indices)."""
+        c = AMBER.Classification(trained_map, small_data, tagged=False)
+        np.testing.assert_array_equal(c.classification_labels, np.arange(len(small_data)))
+
+    def test_untagged_classification_map_length(self, trained_map, small_data):
+        c = AMBER.Classification(trained_map, small_data, tagged=False)
+        assert len(c.classification_map) == len(small_data)
+
+    # --- tagged=True with valid labels in column 0 ---
+
+    def test_tagged_label_types_preserved(self, trained_map):
+        """String labels stored in column 0 should survive as strings."""
+        rng = np.random.default_rng(10)
+        features = rng.standard_normal((6, 4))
+        str_labels = np.array(['A', 'B', 'C', 'A', 'B', 'C'])
+        tagged = np.column_stack([str_labels, features.astype(str)])
+        # tagged array is all strings; features need to be float for BMU search
+        # so build a proper float array with numeric labels instead
+        num_labels = np.array([1.0, 2.0, 3.0, 1.0, 2.0, 3.0])
+        tagged_float = np.column_stack([num_labels, features])
+        c = AMBER.Classification(trained_map, tagged_float, tagged=True)
+        np.testing.assert_array_equal(c.classification_labels, num_labels)
+
+    def test_tagged_feature_count_reduced_by_one(self, trained_map):
+        """tagged=True: classification_data has one fewer column than input."""
+        rng = np.random.default_rng(11)
+        n_features = trained_map.input_data_dimension
+        labels = np.zeros((10, 1))
+        features = rng.standard_normal((10, n_features))
+        tagged = np.column_stack([labels, features])
+        c = AMBER.Classification(trained_map, tagged, tagged=True)
+        assert c.classification_data.shape == (10, n_features)
+
+    def test_tagged_activations_sum_equals_n_samples(self, trained_map):
+        """tagged=True: every sample must find a BMU."""
+        rng = np.random.default_rng(12)
+        n_features = trained_map.input_data_dimension
+        labels = rng.integers(0, 3, size=(8, 1)).astype(float)
+        features = rng.standard_normal((8, n_features))
+        tagged = np.column_stack([labels, features])
+        c = AMBER.Classification(trained_map, tagged, tagged=True)
+        assert c.activations_map.sum() == 8
+
+    def test_tagged_classification_map_labels_match(self, trained_map):
+        """Labels stored in classification_map['labels'] must equal column 0."""
+        rng = np.random.default_rng(13)
+        n_features = trained_map.input_data_dimension
+        label_vals = np.array([10.0, 20.0, 30.0, 10.0, 20.0])
+        features = rng.standard_normal((5, n_features))
+        tagged = np.column_stack([label_vals, features])
+        c = AMBER.Classification(trained_map, tagged, tagged=True)
+        np.testing.assert_array_equal(
+            c.classification_map['labels'].values, label_vals
+        )
+
+    # --- tagged=True edge cases ---
+
+    def test_tagged_true_all_same_label(self, trained_map):
+        """All samples with identical label — must not raise."""
+        rng = np.random.default_rng(14)
+        n_features = trained_map.input_data_dimension
+        labels = np.ones((10, 1))
+        features = rng.standard_normal((10, n_features))
+        tagged = np.column_stack([labels, features])
+        c = AMBER.Classification(trained_map, tagged, tagged=True)
+        assert np.all(c.classification_labels == 1.0)
+
+    def test_tagged_true_single_sample(self, trained_map):
+        """Single sample with tagged=True — must not raise and metrics must be valid."""
+        rng = np.random.default_rng(15)
+        n_features = trained_map.input_data_dimension
+        tagged = np.column_stack([[42.0], rng.standard_normal((1, n_features))])
+        c = AMBER.Classification(trained_map, tagged, tagged=True)
+        assert c.classification_labels[0] == 42.0
+        assert c.activations_map.sum() == 1
+        assert np.isfinite(c.quantization_error)
+
+    def test_tagged_true_label_column_is_not_used_for_bmu(self, trained_map):
+        """BMU distances must differ from a run where the label column is treated as a feature."""
+        rng = np.random.default_rng(16)
+        n_features = trained_map.input_data_dimension
+        labels = rng.integers(0, 5, size=(20, 1)).astype(float) * 1000  # large, would distort BMU
+        features = rng.standard_normal((20, n_features))
+        tagged = np.column_stack([labels, features])
+
+        c_tagged   = AMBER.Classification(trained_map, tagged, tagged=True)
+        c_untagged = AMBER.Classification(trained_map, features, tagged=False)
+
+        # QE should be the same: both classify the same features
+        assert abs(c_tagged.quantization_error - c_untagged.quantization_error) < 1e-6
+
+    def test_nan_in_data_raises(self, trained_map, small_data):
+        """NaN in classification_data must raise ValueError immediately."""
+        bad = small_data.copy()
+        bad[0, 0] = np.nan
+        with pytest.raises(ValueError, match="NaN or inf"):
+            AMBER.Classification(trained_map, bad)
+
+    def test_inf_in_data_raises(self, trained_map, small_data):
+        """Inf in classification_data must raise ValueError immediately."""
+        bad = small_data.copy()
+        bad[2, 1] = np.inf
+        with pytest.raises(ValueError, match="NaN or inf"):
+            AMBER.Classification(trained_map, bad)
+
+    def test_zero_samples_raises(self, trained_map):
+        """Empty array (0 samples) must raise ValueError."""
+        n_features = trained_map.input_data_dimension
+        with pytest.raises(ValueError, match="at least one sample"):
+            AMBER.Classification(trained_map, np.empty((0, n_features)))
+
+    def test_feature_dim_mismatch_raises(self, trained_map):
+        """Wrong number of features must raise ValueError with a clear message."""
+        rng = np.random.default_rng(20)
+        wrong = rng.standard_normal((10, trained_map.input_data_dimension + 2))
+        with pytest.raises(ValueError, match="dimension mismatch"):
+            AMBER.Classification(trained_map, wrong, tagged=False)
+
+    def test_tagged_true_single_column_raises(self, trained_map):
+        """tagged=True with only 1 column must raise (no features after label strip)."""
+        with pytest.raises(ValueError, match="at least 2 columns"):
+            AMBER.Classification(trained_map, np.ones((5, 1)), tagged=True)
+
+    def test_tagged_false_with_label_in_first_column_inflates_qe(self, trained_map):
+        """If labels are NOT stripped (tagged=False) but happen to be in col 0,
+        the first column of features seen by the BMU is the label — QE must differ."""
+        rng = np.random.default_rng(17)
+        n_features = trained_map.input_data_dimension
+        labels = rng.integers(0, 5, size=(20, 1)).astype(float) * 1000
+        features = rng.standard_normal((20, n_features))
+        with_label_col = np.column_stack([labels, features])
+
+        # tagged=False: label column is treated as a feature — shape mismatch with trained map
+        # The trained_map was trained on n_features=4; with_label_col has 5 cols → must raise
+        with pytest.raises(Exception):
+            AMBER.Classification(trained_map, with_label_col, tagged=False)
+
+
 class TestMapSizeVariants:
     @pytest.mark.parametrize('map_size', [2, 5, 8])
     def test_various_map_sizes(self, small_data, map_size):
