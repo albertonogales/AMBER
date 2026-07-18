@@ -9,16 +9,15 @@ DTW uses L2 squared local cost + sqrt, equivalent to tslearn.metrics.dtw
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Callable, Dict
 
 import numpy as np
 
+_DTW_WARN_THRESHOLD = 500  # samples; exposed so callers can suppress selectively
+
 MatrixDistFn = Callable[..., Any]
 ScalarDistFn = Callable[..., Any]
-
-# ---------------------------------------------------------------------------
-# Signal distances — scalar
-# ---------------------------------------------------------------------------
 
 def euclidean_distance(a, b):
     """L2 distance between two 1-D arrays."""
@@ -59,8 +58,20 @@ def dtw_distance(a, b, band=None):
     """L2 DTW distance. Equals Euclidean when the warping path is the identity.
 
     :param band: Sakoe-Chiba half-width in samples (None = unconstrained).
+
+    Pure-Python O(N·M) per pair — slow for windows >500 samples inside a SOM loop.
+    Pass ``band`` (e.g. ``band=50``) to reduce cost to O(N·band).
     """
     n, m = len(a), len(b)
+    if band is None and max(n, m) > _DTW_WARN_THRESHOLD:
+        warnings.warn(
+            f"dtw_distance: sequence length {max(n, m)} exceeds {_DTW_WARN_THRESHOLD} "
+            f"samples. Pure-Python DTW is O(N²) per pair; inside a SOM training loop "
+            f"this will be extremely slow. Pass band=<int> (e.g. band=50) to use a "
+            f"Sakoe-Chiba corridor and reduce cost to O(N·band).",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     dtw_matrix = np.full((n + 1, m + 1), np.inf)
     dtw_matrix[0, 0] = 0.0
 
@@ -82,17 +93,15 @@ def cross_correlation_distance(a, b):
     """1 - peak normalised cross-correlation. Shift-invariant; distance in [0, 1]."""
     norm_a = np.linalg.norm(a)
     norm_b = np.linalg.norm(b)
+    if norm_a == 0 and norm_b == 0:
+        return 0.0  # both zero → identical
     if norm_a == 0 or norm_b == 0:
-        return 1.0
+        return 1.0  # one zero → maximally dissimilar
     a_n = a / norm_a
     b_n = b / norm_b
     xcorr = np.correlate(a_n, b_n, mode='full')
     return float(max(0.0, 1.0 - np.max(np.abs(xcorr))))
 
-
-# ---------------------------------------------------------------------------
-# Signal distances — matrix (whole weight grid vs. one pattern)
-# ---------------------------------------------------------------------------
 
 def euclidean_distance_matrix(weights, pattern):
     """(rows, cols) L2 distances from every neuron weight to pattern."""
@@ -157,10 +166,6 @@ def cross_correlation_distance_matrix(weights, pattern):
     return dist
 
 
-# ---------------------------------------------------------------------------
-# Grid distances — neuron position space (used for neighbourhood update)
-# ---------------------------------------------------------------------------
-
 def grid_euclidean(ids_matrix, bmu):
     """Euclidean distance from every grid position to bmu. Returns (rows, cols) array."""
     return np.sqrt(np.sum(np.square(ids_matrix - np.array(bmu)), axis=-1))
@@ -170,10 +175,6 @@ def grid_chebyshev(ids_matrix, bmu):
     """Chebyshev distance from every grid position to bmu. Returns (rows, cols) array."""
     return np.max(np.abs(ids_matrix - np.array(bmu)), axis=-1)
 
-
-# ---------------------------------------------------------------------------
-# Registry
-# ---------------------------------------------------------------------------
 
 SIGNAL_DISTANCE_MATRIX: Dict[str, MatrixDistFn] = {
     'euclidean':         euclidean_distance_matrix,

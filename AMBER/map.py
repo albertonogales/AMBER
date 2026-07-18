@@ -7,7 +7,10 @@ from typing import Optional, Tuple
 import numpy as np
 from tqdm.auto import tqdm
 
-from .distances import AVAILABLE_DISTANCES, GRID_DISTANCE, SIGNAL_DISTANCE_MATRIX
+import warnings
+
+from .distances import (AVAILABLE_DISTANCES, GRID_DISTANCE, SIGNAL_DISTANCE_MATRIX,
+                        _DTW_WARN_THRESHOLD)
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,13 @@ def vesanto_size(n_samples: int) -> int:
     return max(2, round(np.sqrt(5.0 * np.sqrt(n_samples))))
 
 class Map:
-    """Kohonen SOM with configurable distance, neighbourhood, normalisation, and weight init."""
+    """Kohonen SOM with configurable distance, neighbourhood, normalisation, and weight init.
+
+    Training duration is controlled by ``period``, which counts **total weight update
+    steps** (one pattern presented = one step), not epochs.  To run K epochs over a
+    dataset of N samples pass ``period = K * N``.  The training log always prints the
+    step count and its epoch equivalent so results are unambiguous.
+    """
 
     def __init__(self,
                  data: Optional[np.ndarray] = None,
@@ -37,7 +46,12 @@ class Map:
         """
         :param data: (n_samples, n_features) array; if given, train() is called immediately.
         :param size: map side (size×size neurons); None auto-selects via Vesanto heuristic.
-        :param period: total weight updates (not epochs); set to K*N to approximate K passes.
+        :param period: **Total weight update steps**, not epochs.
+            One epoch over a dataset of N samples equals N update steps.
+            To train for K epochs use ``period = K * N``.
+            Example: 200 samples × 100 epochs → ``period=20000``.
+            The default of 10 is intentionally tiny; always set this explicitly.
+            A warning is logged when period < N (less than one full pass over the data).
         :param initial_lr: initial learning rate, must be in (0, 1).
         :param initial_neighbourhood: initial neighbourhood radius; defaults to size.
         :param distance: BMU search metric — 'euclidean', 'manhattan', 'chebyshev',
@@ -131,7 +145,31 @@ class Map:
             )
         self.weights = self.__init_weights(data=training_data, method=self.weights_init)
 
-        logger.info("TRAINING...")
+        if self.distance == 'dtw' and self.dtw_band is None:
+            win = self.input_data_dimension
+            if win > _DTW_WARN_THRESHOLD:
+                total_pairs = self.period * self.map_size ** 2
+                warnings.warn(
+                    f"Training with distance='dtw', band=None, and window length "
+                    f"{win}. Pure-Python DTW is O(N²) per neuron-pattern pair; this "
+                    f"run will perform {total_pairs:,} DTW calls (~{total_pairs * win**2 / 1e9:.1f}B "
+                    f"inner-loop iterations). Consider setting dtw_band (e.g. "
+                    f"dtw_band={win // 10}) to limit cost to O(N·band).",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+
+        epochs_equiv = self.period / self.num_data
+        logger.info(
+            f"TRAINING: {self.period} steps over {self.num_data} samples "
+            f"({epochs_equiv:.1f} equivalent epoch(s))."
+        )
+        if self.period < self.num_data:
+            logger.warning(
+                f"period={self.period} is less than the number of training samples "
+                f"({self.num_data}), so the SOM will see fewer than one full pass "
+                f"over the data. To train for K epochs set period = K * {self.num_data}."
+            )
         for numPresentation in tqdm(range(1, self.period + 1)):
             if self.presentation == 'sequential':
                 new_pattern = training_data[(numPresentation - 1) % self.num_data]
@@ -407,10 +445,6 @@ class Map:
             return pca_weights
 
         raise ValueError(f"Unknown weight initialisation method: '{method}'")
-
-    ######################################################
-    #                    JSON METHODS                    #
-    ######################################################
 
     @classmethod
     def load_classifier(cls, filename: str = 'Model') -> 'Map':

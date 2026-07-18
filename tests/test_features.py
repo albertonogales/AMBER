@@ -77,9 +77,9 @@ class TestSampleEntropy:
         se_noise = sample_entropy(NOISE[:64])
         assert se_sine <= se_noise + 0.5   # allow some tolerance
 
-    def test_constant_signal_zero(self):
-        # All templates match → A/B = 1 → -log(1) = 0
-        assert sample_entropy(CONSTANT[:32]) == pytest.approx(0.0)
+    def test_constant_signal_returns_inf(self):
+        # std=0 → r=0 → no template matches (strict inequality) → B=0 → maximally irregular
+        assert sample_entropy(CONSTANT[:32]) == np.inf
 
     def test_custom_r(self):
         result = sample_entropy(SINE[:64], r=0.5)
@@ -242,6 +242,13 @@ class TestFeatureExtractorBatch:
         single_out = fe.extract(signal_batch[3], features=feats)
         np.testing.assert_allclose(batch_out[3], single_out)
 
+    def test_empty_batch_returns_correct_shape(self):
+        fe = FeatureExtractor(fs=FS)
+        feats = ['rms', 'mean', 'std']
+        out = fe.extract_batch(np.zeros((0, 64)), features=feats)
+        assert out.shape == (0, len(feats))
+        assert out.dtype == float
+
 
 # ---------------------------------------------------------------------------
 # FeatureExtractor — feature_names
@@ -318,64 +325,39 @@ class TestSampleEntropyEdgeCases:
 # scipy-absent fallback paths (_SCIPY = False)
 # ---------------------------------------------------------------------------
 
-class TestScipyFallbacks:
-    """Verify the numpy-only code paths when scipy is unavailable."""
+class TestScipyRequired:
+    """scipy is now a mandatory dependency — verify it is always used."""
 
-    def test_skewness_numpy_path(self):
-        """_skewness must return a float via the numpy path."""
-        import AMBER.features as feat_mod
-        from unittest.mock import patch
-        with patch.object(feat_mod, '_SCIPY', False):
-            from AMBER.features import _skewness
-            result = _skewness.__wrapped__(SINE) if hasattr(_skewness, '__wrapped__') else feat_mod._skewness(SINE)
-            # Call the function directly via the module to pick up patched _SCIPY
-            # We re-execute the function body by calling it normally — the patch
-            # replaces the module-level flag read inside the function.
-            val = feat_mod._skewness(SINE)
+    def test_skewness_uses_scipy(self):
+        from AMBER.features import _skewness
+        val = _skewness(SINE)
         assert isinstance(val, float)
         assert np.isfinite(val)
 
-    def test_kurtosis_numpy_path(self):
-        """_kurtosis must return a float via the numpy path."""
-        import AMBER.features as feat_mod
-        from unittest.mock import patch
-        with patch.object(feat_mod, '_SCIPY', False):
-            val = feat_mod._kurtosis(SINE)
+    def test_kurtosis_uses_scipy(self):
+        from AMBER.features import _kurtosis
+        val = _kurtosis(SINE)
         assert isinstance(val, float)
         assert np.isfinite(val)
 
-    def test_skewness_constant_zero(self):
-        """Symmetric (constant) signal must give zero skewness in numpy path."""
-        import AMBER.features as feat_mod
-        from unittest.mock import patch
-        with patch.object(feat_mod, '_SCIPY', False):
-            val = feat_mod._skewness(CONSTANT)
-        assert val == pytest.approx(0.0)
+    def test_skewness_constant_nan(self):
+        from AMBER.features import _skewness
+        assert np.isnan(_skewness(CONSTANT))  # scipy: zero variance → nan
 
-    def test_kurtosis_constant_zero(self):
-        """Constant signal must give zero (excess) kurtosis in numpy path."""
-        import AMBER.features as feat_mod
-        from unittest.mock import patch
-        with patch.object(feat_mod, '_SCIPY', False):
-            val = feat_mod._kurtosis(CONSTANT)
-        assert val == pytest.approx(0.0)
+    def test_kurtosis_constant_nan(self):
+        from AMBER.features import _kurtosis
+        assert np.isnan(_kurtosis(CONSTANT))  # scipy: zero variance → nan
 
-    def test_psd_numpy_path_returns_freqs_and_psd(self):
-        """_psd must return (freqs, psd) via the numpy/periodogram path."""
-        import AMBER.features as feat_mod
-        from unittest.mock import patch
-        with patch.object(feat_mod, '_SCIPY', False):
-            freqs, psd = feat_mod._psd(SINE, FS)
+    def test_psd_returns_freqs_and_psd(self):
+        from AMBER.features import _psd
+        freqs, psd = _psd(SINE, FS)
         assert len(freqs) == len(psd)
         assert freqs[0] >= 0.0
         assert np.all(psd >= 0.0)
 
-    def test_spectral_power_numpy_path(self):
-        """spectral_power must work without scipy."""
-        import AMBER.features as feat_mod
-        from unittest.mock import patch
-        with patch.object(feat_mod, '_SCIPY', False):
-            val = feat_mod.spectral_power(SINE, FS)
+    def test_spectral_power_finite(self):
+        from AMBER.features import spectral_power
+        val = spectral_power(SINE, FS)
         assert np.isfinite(val)
         assert val > 0.0
 

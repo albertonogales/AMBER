@@ -3,9 +3,9 @@ Recurrent SOM (RSOM) for temporal/sequential data (Voegtlin, 2002).
 
 Extends Map with a context vector that decays past activations into BMU search:
     context_t  = α·context_{t-1} + (1-α)·w_{BMU_{t-1}}
-    d_eff(x,w) = (1-β)·d(x,w) + β·‖context−w‖
+    d_eff(x,w) = (1-β)·d(x,w) + β·d(context,w)
 
-Context distance is always Euclidean; call reset_context() between independent sequences.
+Call reset_context() between independent sequences.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from .distances import SIGNAL_DISTANCE_MATRIX, euclidean_distance_matrix
+from .distances import SIGNAL_DISTANCE_MATRIX
 from .map import Map, vesanto_size
 
 logger = logging.getLogger(__name__)
@@ -92,17 +92,9 @@ class TemporalMap(Map):
         if data is not None:
             self.train(data)
 
-    # ------------------------------------------------------------------
-    # Context management
-    # ------------------------------------------------------------------
-
     def reset_context(self) -> None:
         """Zero the context vector; call between independent sequences."""
         self._context = None
-
-    # ------------------------------------------------------------------
-    # Overridden BMU (context-aware)
-    # ------------------------------------------------------------------
 
     def calculate_bmu(self, pattern: np.ndarray) -> Tuple:
         """BMU search combining signal and context distances; updates context after."""
@@ -111,7 +103,7 @@ class TemporalMap(Map):
         signal_dist = dist_fn(self.weights, pattern, **kwargs)
 
         if self._context is not None and self.context_influence > 0:
-            context_dist = euclidean_distance_matrix(self.weights, self._context)
+            context_dist = dist_fn(self.weights, self._context, **kwargs)
             combined = ((1.0 - self.context_influence) * signal_dist
                         + self.context_influence * context_dist)
         else:
@@ -132,10 +124,6 @@ class TemporalMap(Map):
                              + (1.0 - self.context_weight) * winner_weights)
 
         return bmu_dist, bmu_pos, second_bmu_dist, second_bmu_pos
-
-    # ------------------------------------------------------------------
-    # Overridden train / reinforce (reset context before each pass)
-    # ------------------------------------------------------------------
 
     def train(self, data: np.ndarray) -> None:
         """Train on temporally ordered data; resets context so calls are independent."""
@@ -182,13 +170,10 @@ class TemporalMap(Map):
 
     def reinforce(self, training_data: np.ndarray, reinforcement: int = 0,
                   extension: int = 1, compression: float = 0.5) -> None:
-        """Reinforcement training; context is reset before each pass."""
+        """Reinforcement training; validates data requirements and resets context before each pass."""
+        self._check_temporal_assumptions(training_data, self._confirm)
         self.reset_context()
         super().reinforce(training_data, reinforcement, extension, compression)
-
-    # ------------------------------------------------------------------
-    # Serialisation (extends parent JSON with temporal parameters)
-    # ------------------------------------------------------------------
 
     def save_classifier(self, filename: str = 'Model') -> None:
         """Save map to JSON, including temporal parameters."""

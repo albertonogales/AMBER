@@ -1,11 +1,7 @@
-"""
-Temporal metrics for SOM classification results assumed to be an ordered time series.
-
-Computes transition_matrix, stability, mean_path_length, mean_chebyshev_jump,
-temporal_coherence, and trajectory from a completed Classification object.
-"""
+"""Temporal metrics for a time-ordered SOM classification result."""
 
 import logging
+from functools import cached_property
 
 import numpy as np
 
@@ -13,86 +9,88 @@ logger = logging.getLogger(__name__)
 
 
 class TemporalAnalysis:
-    """Temporal dynamics of a SOM classification result.
+    """Temporal dynamics of a time-ordered SOM classification result.
 
-    Assumes classification patterns are time-ordered (e.g. windowed biosignals).
-    Key attributes: trajectory, transition_matrix, stability, mean_path_length,
-    mean_chebyshev_jump, temporal_coherence.
+    Assumes classification patterns are ordered (e.g. windowed biosignals).
+    All metrics are computed lazily on first access via @cached_property.
     """
 
-    def __init__(self, classification):
+    def __init__(self, classification) -> None:
         cm = classification.classification_map
         self.map_size = classification.activations_map.shape[0]
+
+        xs = cm['x'].to_numpy(dtype=int)
+        ys = cm['y'].to_numpy(dtype=int)
+        self.trajectory = list(zip(xs.tolist(), ys.tolist()))
+
+        self._xs = xs
+        self._ys = ys
+
+    @cached_property
+    def transition_matrix(self) -> np.ndarray:
+        """k²×k² count matrix; T[i,j] = number of steps from neuron i to neuron j."""
         n_neurons = self.map_size ** 2
-
-        self.trajectory = [
-            (int(cm['x'].iloc[i]), int(cm['y'].iloc[i]))
-            for i in range(len(cm))
-        ]
-        n = len(self.trajectory)
-
         T = np.zeros((n_neurons, n_neurons), dtype=int)
-        for t in range(n - 1):
-            i = self.trajectory[t][0]     * self.map_size + self.trajectory[t][1]
-            j = self.trajectory[t + 1][0] * self.map_size + self.trajectory[t + 1][1]
-            T[i, j] += 1
-        self.transition_matrix = T
+        indices = self._xs * self.map_size + self._ys
+        if len(indices) > 1:
+            np.add.at(T, (indices[:-1], indices[1:]), 1)
+        return T
 
+    @cached_property
+    def transition_matrix_norm(self) -> np.ndarray:
+        """Row-normalised transition matrix (transition probabilities)."""
+        T = self.transition_matrix
         row_sums = T.sum(axis=1, keepdims=True)
         with np.errstate(invalid='ignore', divide='ignore'):
-            self.transition_matrix_norm = np.where(
-                row_sums > 0, T / row_sums, 0.0
-            )
+            return np.where(row_sums > 0, T / row_sums, 0.0)
 
-        if n > 1:
-            same = sum(
-                1 for t in range(n - 1)
-                if self.trajectory[t] == self.trajectory[t + 1]
-            )
-            self.stability = same / (n - 1)
-        else:
-            self.stability = 1.0
+    @cached_property
+    def stability(self) -> float:
+        """Fraction of consecutive steps where the BMU did not change."""
+        n = len(self.trajectory)
+        if n <= 1:
+            return 1.0
+        same = np.sum((self._xs[:-1] == self._xs[1:]) & (self._ys[:-1] == self._ys[1:]))
+        return float(same / (n - 1))
 
-        if n > 1:
-            dists = [
-                np.sqrt(
-                    (self.trajectory[t][0] - self.trajectory[t + 1][0]) ** 2
-                    + (self.trajectory[t][1] - self.trajectory[t + 1][1]) ** 2
-                )
-                for t in range(n - 1)
-            ]
-            self.mean_path_length = float(np.mean(dists))
-        else:
-            self.mean_path_length = 0.0
+    @cached_property
+    def mean_path_length(self) -> float:
+        """Mean Euclidean distance between consecutive BMU positions (grid units)."""
+        n = len(self.trajectory)
+        if n <= 1:
+            return 0.0
+        dx = np.diff(self._xs).astype(float)
+        dy = np.diff(self._ys).astype(float)
+        return float(np.mean(np.sqrt(dx ** 2 + dy ** 2)))
 
-        # Temporal coherence = fraction of steps with Chebyshev jump ≤ 1 (same or immediate neighbour).
-        if n > 1:
-            chebyshev_jumps = [
-                max(abs(self.trajectory[t][0] - self.trajectory[t + 1][0]),
-                    abs(self.trajectory[t][1] - self.trajectory[t + 1][1]))
-                for t in range(n - 1)
-            ]
-            self.mean_chebyshev_jump = float(np.mean(chebyshev_jumps))
-            self.temporal_coherence  = float(
-                sum(j <= 1 for j in chebyshev_jumps) / (n - 1)
-            )
-        else:
-            self.mean_chebyshev_jump = 0.0
-            self.temporal_coherence  = 1.0
+    @cached_property
+    def mean_chebyshev_jump(self) -> float:
+        """Mean Chebyshev distance between consecutive BMU positions (grid units)."""
+        n = len(self.trajectory)
+        if n <= 1:
+            return 0.0
+        return float(np.mean(np.maximum(np.abs(np.diff(self._xs)),
+                                        np.abs(np.diff(self._ys)))))
 
-    # ------------------------------------------------------------------
-    # Derived views
-    # ------------------------------------------------------------------
+    @cached_property
+    def temporal_coherence(self) -> float:
+        """Fraction of steps where Chebyshev jump ≤ 1 (same neuron or immediate neighbour)."""
+        n = len(self.trajectory)
+        if n <= 1:
+            return 1.0
+        jumps = np.maximum(np.abs(np.diff(self._xs)), np.abs(np.diff(self._ys)))
+        return float(np.sum(jumps <= 1) / (n - 1))
 
-    def most_frequent_transitions(self, top_k=10):
+    def most_frequent_transitions(self, top_k: int = 10):
         """Top-k transitions as list of dicts with keys 'from', 'to', 'count'."""
+        T = self.transition_matrix
         flat = [
             (i // self.map_size, i % self.map_size,
              j // self.map_size, j % self.map_size,
-             self.transition_matrix[i, j])
-            for i in range(self.transition_matrix.shape[0])
-            for j in range(self.transition_matrix.shape[1])
-            if self.transition_matrix[i, j] > 0
+             T[i, j])
+            for i in range(T.shape[0])
+            for j in range(T.shape[1])
+            if T[i, j] > 0
         ]
         flat.sort(key=lambda x: -x[4])
         return [

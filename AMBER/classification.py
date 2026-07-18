@@ -97,8 +97,7 @@ class Classification:
         for pattern in tqdm(range(0, n_samples)):
             bmu, bmu_pos, second_bmu, second_bmu_pos = som.calculate_bmu(norm_data[pattern])
 
-            # Topological error: BMU and 2nd-BMU non-adjacent (Chebyshev > 1 covers all 8 neighbours).
-            if np.max(np.abs(np.array(bmu_pos) - np.array(second_bmu_pos))) > 1:
+            if np.max(np.abs(np.array(bmu_pos) - np.array(second_bmu_pos))) > 1:  # Chebyshev > 1 → non-adjacent
                 self.topological_map[bmu_pos] += 1
 
             distance = scalar_dist_fn(som.weights[bmu_pos], norm_data[pattern],
@@ -117,7 +116,6 @@ class Classification:
 
         self.distances_map = np.around(self.distances_map, decimals=5)
 
-        # TE = fraction of samples whose BMU and 2nd-BMU are non-adjacent (Villmann 1997).
         self.topological_error = np.sum(self.topological_map) / n_samples
         self.topological_error_map = np.divide(self.topological_map, self.activations_map,
                                                out=np.zeros_like(self.topological_map),

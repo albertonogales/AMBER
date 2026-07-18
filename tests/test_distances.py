@@ -1,5 +1,7 @@
 """Tests for AMBER/distances.py — all signal and grid distance functions."""
 
+import warnings
+
 import numpy as np
 import pytest
 
@@ -261,6 +263,23 @@ def test_dtw_matrix_matches_scalar():
     assert d[1, 3] == pytest.approx(dtw_distance(WEIGHTS[1, 3], A), abs=1e-10)
 
 
+def test_dtw_long_sequence_warns():
+    """dtw_distance without band should warn when sequence length > threshold."""
+    from AMBER.distances import _DTW_WARN_THRESHOLD
+    long = np.zeros(_DTW_WARN_THRESHOLD + 1)
+    with pytest.warns(RuntimeWarning, match="band"):
+        dtw_distance(long, long)
+
+
+def test_dtw_long_sequence_with_band_no_warning():
+    """dtw_distance with band set should not warn regardless of length."""
+    from AMBER.distances import _DTW_WARN_THRESHOLD
+    long = np.zeros(_DTW_WARN_THRESHOLD + 1)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        dtw_distance(long, long, band=50)  # must not raise
+
+
 # ---------------------------------------------------------------------------
 # Cross-correlation
 # ---------------------------------------------------------------------------
@@ -276,8 +295,14 @@ def test_cross_correlation_range():
     assert -1e-10 <= d <= 1.0 + 1e-10
 
 
-def test_cross_correlation_zero_vector():
+def test_cross_correlation_zero_vector_one_side():
+    """One zero signal → maximally dissimilar."""
     assert cross_correlation_distance(ZERO, A) == pytest.approx(1.0)
+
+
+def test_cross_correlation_both_zero():
+    """Two zero signals → identical, distance = 0."""
+    assert cross_correlation_distance(ZERO, ZERO) == pytest.approx(0.0)
 
 
 def test_cross_correlation_matrix_shape():

@@ -27,14 +27,15 @@ class TestIterativeSOMInit:
     def test_give_best_sets_best_map(self, small_data):
         iso = IterativeSOM(
             small_data, period=10, initial_lr=0.1,
-            size_range=[3, 4], give_best=True,
+            size_range=[3, 4], give_best=True, metric='combined',
         )
         assert iso.best_map is not None
 
-    def test_best_map_has_lowest_qe(self, small_data):
+    def test_best_map_metric_qe_has_lowest_qe(self, small_data):
+        """With metric='qe', best_map must be the one with minimum quantization error."""
         iso = IterativeSOM(
             small_data, period=20, initial_lr=0.1,
-            size_range=[3, 4, 5], give_best=True,
+            size_range=[3, 4, 5], give_best=True, metric='qe',
         )
         import AMBER
         qes = {
@@ -43,6 +44,11 @@ class TestIterativeSOMInit:
         }
         best_qe = AMBER.Classification(iso.best_map, small_data).quantization_error
         assert best_qe == pytest.approx(min(qes.values()), rel=1e-6)
+
+    def test_invalid_metric_raises(self, small_data):
+        with pytest.raises(ValueError, match="metric"):
+            IterativeSOM(small_data, period=10, initial_lr=0.1,
+                         size_range=[3], metric='invalid')
 
     def test_no_give_best_best_map_is_none(self, small_data):
         iso = IterativeSOM(small_data, period=10, initial_lr=0.1,
@@ -102,7 +108,7 @@ class TestIterativeSOMReproducibility:
         n = len(small_data)
         train, val = small_data[:n // 2], small_data[n // 2:]
         it = IterativeSOM(train, period=20, initial_lr=0.1,
-                          size_range=[3, 4], give_best=True,
+                          size_range=[3, 4], give_best=True, metric='combined',
                           validation_data=val, random_seed=0)
         assert it.best_map is not None
 
@@ -111,17 +117,15 @@ class TestIterativeSOMReproducibility:
         import logging
         with caplog.at_level(logging.WARNING, logger='AMBER.iterativesom'):
             IterativeSOM(small_data, period=10, initial_lr=0.1,
-                         size_range=[3], give_best=True, random_seed=0)
+                         size_range=[3], give_best=True, metric='combined', random_seed=0)
         assert any('selection bias' in rec.message or 'validation_data' in rec.message
                    for rec in caplog.records)
 
     def test_no_warning_when_validation_data_provided(self, small_data):
         """give_best with validation_data must NOT log the in-sample warning."""
-        import logging
         n = len(small_data)
         train, val = small_data[:n // 2], small_data[n // 2:]
-        # No assertion needed — just verify it runs without logging warning
         it = IterativeSOM(train, period=10, initial_lr=0.1,
-                          size_range=[3], give_best=True,
+                          size_range=[3], give_best=True, metric='combined',
                           validation_data=val, random_seed=0)
         assert it.best_map is not None

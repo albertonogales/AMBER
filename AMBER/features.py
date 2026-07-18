@@ -2,20 +2,15 @@
 Feature extraction for time series (biosignals, audio).
 
 FeatureExtractor converts raw signal windows into fixed-length vectors for Map.train/classify.
-Requires librosa for 'mfcc'; scipy improves spectral accuracy but falls back to numpy.
+Requires scipy (mandatory) and librosa (optional, only for 'mfcc').
 """
 
 import numpy as np
+from scipy import signal as _sp_signal
+from scipy import stats as _sp_stats
 
 # np.trapezoid introduced in NumPy 2.0; np.trapz removed in NumPy 2.0.
 _trapz = getattr(np, 'trapezoid', None) or getattr(np, 'trapz')
-
-try:
-    from scipy import signal as _sp_signal
-    from scipy import stats as _sp_stats
-    _SCIPY = True
-except ImportError:
-    _SCIPY = False
 
 try:
     import librosa as _librosa
@@ -86,10 +81,6 @@ class FeatureExtractor:
         self.spectral_rolloff_pct = spectral_rolloff_pct
         self.eeg_bands = eeg_bands if eeg_bands is not None else EEG_BANDS
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def extract(self, signal, features=None):
         """Extract a 1-D feature vector from a single signal window.
 
@@ -100,9 +91,10 @@ class FeatureExtractor:
         if features is None:
             features = sorted(self.STATISTICAL | self.COMPLEXITY)
 
+        cache = {}
         result = []
         for feat in features:
-            val = self._dispatch(x, feat)
+            val = self._dispatch(x, feat, cache)
             if np.isscalar(val):
                 result.append(float(val))
             else:
@@ -117,6 +109,9 @@ class FeatureExtractor:
         :return: (n_windows, n_features) numpy array
         """
         signals = np.asarray(signals, dtype=float)
+        if signals.shape[0] == 0:
+            n_feats = len(self.extract(np.zeros(signals.shape[1] if signals.ndim > 1 else 1), features))
+            return np.empty((0, n_feats), dtype=float)
         rows = [self.extract(signals[i], features) for i in range(signals.shape[0])]
         return np.stack(rows, axis=0)
 
@@ -132,62 +127,80 @@ class FeatureExtractor:
                 names.append(feat)
         return names
 
-    # ------------------------------------------------------------------
-    # Internal dispatch
-    # ------------------------------------------------------------------
+    def _build_dispatch(self):
+        """Return a dict mapping feature name → callable(x, cache)."""
+        _HJORTH = ('hjorth_activity', 'hjorth_mobility', 'hjorth_complexity')
 
-    def _dispatch(self, x, feat):
-        if feat == 'mean':
-            return np.mean(x)
-        if feat == 'std':
-            return np.std(x)
-        if feat == 'var':
-            return np.var(x)
-        if feat == 'skewness':
-            return _skewness(x)
-        if feat == 'kurtosis':
-            return _kurtosis(x)
-        if feat == 'rms':
-            return np.sqrt(np.mean(x ** 2))
-        if feat == 'peak_to_peak':
-            return float(np.ptp(x))
-        if feat == 'zero_crossing_rate':
-            return zero_crossing_rate(x)
-        if feat == 'line_length':
-            return line_length(x)
-        if feat == 'hjorth_activity':
-            return hjorth_parameters(x)[0]
-        if feat == 'hjorth_mobility':
-            return hjorth_parameters(x)[1]
-        if feat == 'hjorth_complexity':
-            return hjorth_parameters(x)[2]
-        if feat == 'sample_entropy':
-            return sample_entropy(x, m=self.sample_entropy_m, r=self.sample_entropy_r)
-        if feat == 'spectral_power':
-            return spectral_power(x, self.fs)
-        if feat == 'dominant_frequency':
-            return dominant_frequency(x, self.fs)
-        if feat == 'spectral_entropy':
-            return spectral_entropy(x, self.fs)
-        if feat == 'spectral_centroid':
-            return spectral_centroid(x, self.fs)
-        if feat == 'spectral_rolloff':
-            return spectral_rolloff(x, self.fs, pct=self.spectral_rolloff_pct)
-        if feat in ('delta_power', 'theta_power', 'alpha_power', 'beta_power', 'gamma_power'):
-            band = feat.replace('_power', '')
-            lo, hi = self.eeg_bands[band]
-            return band_power(x, self.fs, lo, hi)
-        if feat == 'mfcc':
-            return compute_mfcc(x, self.fs, self.n_mfcc, self.mfcc_hop_length)
-        raise ValueError(
-            f"Unknown feature '{feat}'. Available: "
-            f"{sorted(self.STATISTICAL | self.SPECTRAL | self.COMPLEXITY | self.LIBROSA_FEATURES)}"
-        )
+        def _hjorth(idx):
+            def fn(x, cache):
+                if 'hjorth' not in cache:
+                    cache['hjorth'] = hjorth_parameters(x)
+                return cache['hjorth'][idx]
+            return fn
 
+        def _spectral(fn):
+            def wrapped(x, cache):
+                if 'psd' not in cache:
+                    cache['psd'] = _psd(x, self.fs)
+                freqs, psd = cache['psd']
+                return fn(x, freqs, psd)
+            return wrapped
 
-# ---------------------------------------------------------------------------
-# Statistical features
-# ---------------------------------------------------------------------------
+        def _band(band_name):
+            def fn(x, cache):
+                if 'psd' not in cache:
+                    cache['psd'] = _psd(x, self.fs)
+                freqs, psd = cache['psd']
+                lo, hi = self.eeg_bands[band_name]
+                return band_power(x, self.fs, lo, hi, freqs=freqs, psd=psd)
+            return fn
+
+        table = {
+            # Statistical
+            'mean':               lambda x, c: np.mean(x),
+            'std':                lambda x, c: np.std(x),
+            'var':                lambda x, c: np.var(x),
+            'skewness':           lambda x, c: _skewness(x),
+            'kurtosis':           lambda x, c: _kurtosis(x),
+            'rms':                lambda x, c: np.sqrt(np.mean(x ** 2)),
+            'peak_to_peak':       lambda x, c: float(np.max(x) - np.min(x)),
+            'zero_crossing_rate': lambda x, c: zero_crossing_rate(x),
+            'line_length':        lambda x, c: line_length(x),
+            # Hjorth (shared computation)
+            'hjorth_activity':    _hjorth(0),
+            'hjorth_mobility':    _hjorth(1),
+            'hjorth_complexity':  _hjorth(2),
+            # Complexity
+            'sample_entropy':     lambda x, c: sample_entropy(
+                                      x, m=self.sample_entropy_m, r=self.sample_entropy_r),
+            # Spectral (shared PSD computation)
+            'spectral_power':     _spectral(lambda x, f, p: spectral_power(x, self.fs, freqs=f, psd=p)),
+            'dominant_frequency': _spectral(lambda x, f, p: dominant_frequency(x, self.fs, freqs=f, psd=p)),
+            'spectral_entropy':   _spectral(lambda x, f, p: spectral_entropy(x, self.fs, psd=p)),
+            'spectral_centroid':  _spectral(lambda x, f, p: spectral_centroid(x, self.fs, freqs=f, psd=p)),
+            'spectral_rolloff':   _spectral(lambda x, f, p: spectral_rolloff(
+                                      x, self.fs, pct=self.spectral_rolloff_pct, freqs=f, psd=p)),
+            # EEG band powers (shared PSD computation)
+            **{f'{b}_power': _band(b) for b in self.eeg_bands},
+            # Librosa
+            'mfcc':               lambda x, c: compute_mfcc(
+                                      x, self.fs, self.n_mfcc, self.mfcc_hop_length),
+        }
+        return table
+
+    def _dispatch(self, x, feat, cache=None):
+        if cache is None:
+            cache = {}
+        if '_table' not in self.__dict__:
+            self.__dict__['_table'] = self._build_dispatch()
+        fn = self.__dict__['_table'].get(feat)
+        if fn is None:
+            raise ValueError(
+                f"Unknown feature '{feat}'. Available: "
+                f"{sorted(self.STATISTICAL | self.SPECTRAL | self.COMPLEXITY | self.LIBROSA_FEATURES)}"
+            )
+        return fn(x, cache)
+
 
 def zero_crossing_rate(x):
     """Fraction of samples where the signal crosses zero."""
@@ -200,12 +213,7 @@ def line_length(x):
 
 
 def hjorth_parameters(x):
-    """Hjorth activity, mobility, and complexity.
-
-    Activity = variance; mobility ∝ mean frequency; complexity = similarity to a sine (=1).
-
-    :return: (activity, mobility, complexity) tuple of floats
-    """
+    """Hjorth (1970) activity, mobility, and complexity. Returns a 3-tuple of floats."""
     activity = float(np.var(x))
     dx = np.diff(x)
     var_dx = float(np.var(dx))
@@ -218,12 +226,10 @@ def hjorth_parameters(x):
 
 
 def sample_entropy(x, m=2, r=None):
-    """Regularity measure robust to signal length; lower = more predictable.
-
-    O(N²·m); avoid on windows >2000 samples.
+    """Sample entropy (Richman & Moorman 2000). Lower = more regular. O(N²·m).
 
     :param m: template length (2 is standard)
-    :param r: similarity tolerance (None → 0.2·std)
+    :param r: similarity tolerance (None → 0.2·std); B==0 → returns np.inf
     """
     x = np.asarray(x, dtype=float)
     if r is None:
@@ -242,55 +248,40 @@ def sample_entropy(x, m=2, r=None):
     A = _count(m + 1)
     B = _count(m)
     if B == 0:
-        return 0.0
+        return np.inf   # no template matches at length m → maximally irregular
     return float(-np.log(A / B))
 
 
 def _skewness(x):
-    if _SCIPY:
-        return float(_sp_stats.skew(x))
-    n = len(x)
-    mu, sigma = np.mean(x), np.std(x)
-    return 0.0 if sigma == 0 else float(np.sum((x - mu) ** 3) / (n * sigma ** 3))
+    return float(_sp_stats.skew(x))
 
 
 def _kurtosis(x):
-    if _SCIPY:
-        return float(_sp_stats.kurtosis(x))
-    n = len(x)
-    mu, sigma = np.mean(x), np.std(x)
-    return 0.0 if sigma == 0 else float(np.sum((x - mu) ** 4) / (n * sigma ** 4) - 3)
+    return float(_sp_stats.kurtosis(x))
 
-
-# ---------------------------------------------------------------------------
-# Spectral helpers
-# ---------------------------------------------------------------------------
 
 def _psd(x, fs):
-    """PSD via Welch (scipy) or periodogram (numpy fallback)."""
-    if _SCIPY:
-        return _sp_signal.welch(x, fs=fs, nperseg=min(256, len(x)))
-    n = len(x)
-    freqs = np.fft.rfftfreq(n, d=1.0 / fs)
-    psd = (np.abs(np.fft.rfft(x)) ** 2) / n
-    return freqs, psd
+    return _sp_signal.welch(x, fs=fs, nperseg=min(256, len(x)))
 
 
-def spectral_power(x, fs):
+def spectral_power(x, fs, freqs=None, psd=None):
     """Total signal power estimated from the PSD."""
-    freqs, psd = _psd(x, fs)
+    if freqs is None or psd is None:
+        freqs, psd = _psd(x, fs)
     return float(_trapz(psd, freqs))
 
 
-def dominant_frequency(x, fs):
+def dominant_frequency(x, fs, freqs=None, psd=None):
     """Frequency at which the PSD is maximum."""
-    freqs, psd = _psd(x, fs)
+    if freqs is None or psd is None:
+        freqs, psd = _psd(x, fs)
     return float(freqs[np.argmax(psd)])
 
 
-def spectral_entropy(x, fs):
+def spectral_entropy(x, fs, psd=None):
     """Shannon entropy of the normalised PSD; low for narrow-band, high for broadband."""
-    _, psd = _psd(x, fs)
+    if psd is None:
+        _, psd = _psd(x, fs)
     total = psd.sum()
     if total == 0:
         return 0.0
@@ -298,33 +289,32 @@ def spectral_entropy(x, fs):
     return float(-np.sum(p * np.log(p + 1e-12)))
 
 
-def spectral_centroid(x, fs):
+def spectral_centroid(x, fs, freqs=None, psd=None):
     """Frequency-weighted mean of the PSD (centre of mass of the spectrum)."""
-    freqs, psd = _psd(x, fs)
+    if freqs is None or psd is None:
+        freqs, psd = _psd(x, fs)
     total = psd.sum()
     return float(np.sum(freqs * psd) / total) if total > 0 else 0.0
 
 
-def spectral_rolloff(x, fs, pct=0.85):
+def spectral_rolloff(x, fs, pct=0.85, freqs=None, psd=None):
     """Frequency below which pct of total spectral power is contained."""
-    freqs, psd = _psd(x, fs)
+    if freqs is None or psd is None:
+        freqs, psd = _psd(x, fs)
     cumsum = np.cumsum(psd)
     idx = np.searchsorted(cumsum, pct * cumsum[-1])
     return float(freqs[min(idx, len(freqs) - 1)])
 
 
-def band_power(x, fs, f_low, f_high):
+def band_power(x, fs, f_low, f_high, freqs=None, psd=None):
     """Integrate PSD over [f_low, f_high] Hz; standard for EEG rhythm analysis."""
-    freqs, psd = _psd(x, fs)
+    if freqs is None or psd is None:
+        freqs, psd = _psd(x, fs)
     mask = (freqs >= f_low) & (freqs <= f_high)
     if not mask.any():
         return 0.0
     return float(_trapz(psd[mask], freqs[mask]))
 
-
-# ---------------------------------------------------------------------------
-# Librosa-based features
-# ---------------------------------------------------------------------------
 
 def compute_mfcc(x, fs, n_mfcc=13, hop_length=512):
     """Mean MFCC coefficients over a window; returns length-n_mfcc vector. Requires librosa."""

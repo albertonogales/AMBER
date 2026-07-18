@@ -38,6 +38,7 @@ dependencies = [
     "plotly>=5.0",
     "tqdm>=4.0",
     "scikit-learn>=1.0",
+    "scipy>=1.7",
 ]
 
 [project.urls]
@@ -48,10 +49,8 @@ Source        = "https://github.com/albertonogales/AMBER"
 "Bug Tracker" = "https://github.com/albertonogales/AMBER/issues"
 
 [project.optional-dependencies]
-spectral = ["scipy>=1.7"]
 mfcc = ["librosa>=0.9"]
 dev = [
-    "scipy>=1.7",
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "ruff>=0.4",
