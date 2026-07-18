@@ -8,8 +8,7 @@ from typing import Optional, Tuple
 import numpy as np
 from tqdm.auto import tqdm
 
-from .distances import (AVAILABLE_DISTANCES, GRID_DISTANCE, SIGNAL_DISTANCE_MATRIX,
-                        _DTW_WARN_THRESHOLD)
+from .distances import AVAILABLE_DISTANCES, GRID_DISTANCE, SIGNAL_DISTANCE_MATRIX, _DTW_WARN_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
