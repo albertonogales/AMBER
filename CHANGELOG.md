@@ -18,12 +18,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - `CITATION.cff` — machine-readable citation metadata for GitHub, Zenodo, and automated citation tools.
 - Comprehensive citation block in `README.md` (BibTeX entry, CFF pointer).
-- 27 additional tests: scipy-absent fallbacks, librosa MFCC paths, `reinforce()` sequential branch, `TemporalMap.reinforce()`, `TemporalMap` norm_params save/load, `Classification` `verbose=True` and `other` DataFrame, visualization save-to-file paths, `trajectory` umatrix background, `IterativeSOM` selection-bias warning (372 tests, 99% coverage).
+- 27 additional tests: scipy-absent fallbacks, librosa MFCC paths, `reinforce()` sequential branch, `TemporalMap.reinforce()`, `TemporalMap` norm_params save/load, `Classification` `verbose=True` and `other` DataFrame, visualization save-to-file paths, `trajectory` umatrix background, `IterativeSOM` selection-bias warning.
+- 2 additional tests for `dtw_distance` `RuntimeWarning` when sequence length exceeds threshold (374 tests, 99% coverage).
+- scipy promoted from optional to required dependency; `spectral` extra removed.
+- `RuntimeWarning` added to `dtw_distance` and `Map.train` when DTW is used without a Sakoe-Chiba band on long sequences.
+- `period` parameter semantics clarified with runtime log showing equivalent epoch count.
 
 ### Changed
 - `CONTRIBUTING.md`: corrected GitHub URL (`ufvceiec` → `albertonogales`) and contact email (`@ceiec.es` → `@uah.es`); coverage threshold updated to 99%.
-- `docs/getting_started.rst`: Python requirement updated to 3.9+; test count updated to 372, 99%.
-- `README.md`: test count updated to 372, 99%.
+- `docs/getting_started.rst`: Python requirement updated to 3.9+; test count updated to 374, 99%.
+- `README.md`: test count updated to 374, 99%.
 - `run_cbf_som.py` moved from project root to `examples/cbf_dtw_example.py`.
 
 ---

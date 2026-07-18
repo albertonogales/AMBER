@@ -20,7 +20,7 @@ It covers the full workflow — data normalisation, map training, classification
 | `TemporalMap` | Recurrent SOM (RSOM, Voegtlin 2002) — context vector accumulates temporal structure |
 | `TemporalAnalysis` | Transition matrix, stability index, mean path length, dwell times |
 | `FeatureExtractor` | Statistical, spectral, and complexity features for time-series/biosignals |
-| `IterativeSOM` | Grid-search over map sizes; selects the best map by topological error |
+| `IterativeSOM` | Grid-search over map sizes; selects the best map by combined QE+TE score |
 | `Visualization` | Heat maps, U-matrix, elevation maps, trajectory plots, transition heatmaps |
 
 ### Distance metrics (BMU selection)
@@ -53,7 +53,6 @@ pip install -e .
 
 | Extra | Install command | Required for |
 |-------|----------------|-------------|
-| scipy | `pip install scipy` | Welch PSD, improved skewness/kurtosis |
 | librosa | `pip install librosa` | MFCC feature extraction |
 
 ---
@@ -102,6 +101,7 @@ tsom = AMBER.TemporalMap(
     period=100,
     context_weight=0.5,     # α — context memory
     context_influence=0.3,  # β — context vs. signal balance
+    confirm=True,           # required: acknowledge temporal ordering assumption
 )
 
 # Analyse temporal dynamics
@@ -152,7 +152,7 @@ AMBER has been applied to and includes example notebooks for:
 
 ```bash
 pip install -r requirements-dev.txt
-pytest               # 372 tests, ~99 % coverage
+pytest               # 374 tests, ~99 % coverage
 ```
 
 A coverage HTML report is written to `coverage_html/`.
@@ -193,8 +193,6 @@ AMBER/
 │   └── ablation_study.ipynb              # Systematic validation of all design choices
 ├── requirements.txt
 ├── requirements-dev.txt
-├── setup.py
-├── setup.cfg
 └── LICENSE
 ```
 

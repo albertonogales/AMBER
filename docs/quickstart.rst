@@ -84,6 +84,7 @@ Temporal / Recurrent SOM
        period=100,
        context_weight=0.5,        # α — context memory decay
        context_influence=0.3,     # β — context vs. signal balance
+       confirm=True,              # required: acknowledge temporal ordering assumption
    )
 
    cls = AMBER.Classification(tsom, eeg_windows)
@@ -120,6 +121,6 @@ Iterative map-size selection
 
 .. code-block:: python
 
-   isom = AMBER.IterativeSOM(data=data, period=50)
-   best = isom.best_map()
+   isom = AMBER.IterativeSOM(data=data, period=50, give_best=True)
+   best = isom.best_map          # attribute, not a method call
    print(f"Best size: {best.map_size}")

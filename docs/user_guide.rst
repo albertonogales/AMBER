@@ -202,6 +202,7 @@ where α is ``context_weight`` (memory decay) and β is ``context_influence``
        context_influence=0.3,   # β — how much context affects BMU selection
        distance='euclidean',
        normalization='zscore',
+       confirm=True,            # required: acknowledge temporal ordering assumption
    )
 
    tcls = AMBER.Classification(tsom, data)
@@ -214,8 +215,8 @@ where α is ``context_weight`` (memory decay) and β is ``context_influence``
    # dwell_times()      — dict of {(row, col): mean_dwell}
 
    # Most frequent transitions
-   for (src, dst), count in ta.most_frequent_transitions(top_k=5):
-       print(f"neuron {src} → {dst}  ({count} times)")
+   for tr in ta.most_frequent_transitions(top_k=5):
+       print(f"neuron {tr['from']} → {tr['to']}  ({tr['count']} times)")
 
    # Reset context between independent sequences
    tsom.reset_context()
@@ -266,12 +267,12 @@ Iterative map-size selection
 ----------------------------
 
 ``IterativeSOM`` trains maps across a range of sizes and returns the one with
-the lowest topological error:
+the lowest combined QE+TE score:
 
 .. code-block:: python
 
-   isom = AMBER.IterativeSOM(data=data, period=100)
-   best = isom.best_map()
+   isom = AMBER.IterativeSOM(data=data, period=100, give_best=True)
+   best = isom.best_map          # attribute, populated when give_best=True
    print(f"Best size: {best.map_size}")
 
    # Inspect all sizes tested
