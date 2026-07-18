@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+import warnings
 from typing import Optional, Tuple
 
 import numpy as np
 from tqdm.auto import tqdm
-
-import warnings
 
 from .distances import (AVAILABLE_DISTANCES, GRID_DISTANCE, SIGNAL_DISTANCE_MATRIX,
                         _DTW_WARN_THRESHOLD)
