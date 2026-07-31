@@ -8,8 +8,8 @@ printed as a Markdown table suitable for inclusion in a paper or README.
 Libraries compared
 ------------------
 - GEMA        (García-Tejedor & Nogales, 2022) — https://github.com/ufvceiec/GEMA
-- MiniSom     (Vettigli, 2018)                 — https://github.com/JustGlowing/minisom
-- sklearn-som (Moran, 2021)                    — https://github.com/rileypsmith/sklearn-som
+- MiniSom     2.3.6 (Vettigli, 2018)          — https://github.com/JustGlowing/minisom
+- sklearn-som 1.1.0 (Smith, 2021)             — https://github.com/rileypsmith/sklearn-som
 
 Note: SomPy is omitted because it is no longer maintained and incompatible
 with current NumPy / Python versions.
