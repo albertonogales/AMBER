@@ -59,7 +59,7 @@ class Map:
         :param dtw_band: Sakoe-Chiba half-width for DTW (None = unconstrained).
         :param use_decay: True = Gaussian neighbourhood; False = bubble (hard boundary).
         :param lr_decay: 'linear' (default) or 'asymptotic' decay schedule.
-        :param normalization: 'none', 'zscore'/'fwn', 'robust', '01scale',
+        :param normalization: 'none', 'zscore', 'robust', '01scale',
             'zscore_sample', 'robust_sample', 'minmax_sample', or 'l2'/'euclidean'.
         :param presentation: 'random' (default) or 'sequential'.
         :param weights: weight init — 'random', 'random_negative', 'sample', or 'PCA'.
@@ -301,7 +301,7 @@ class Map:
 
         data = data.astype(float, copy=True)
 
-        if method in ('zscore', 'fwn'):
+        if method == 'zscore':
             mean = data.mean(axis=0)
             std  = data.std(axis=0)
             std[std == 0] = 1.0
@@ -352,7 +352,7 @@ class Map:
 
         raise ValueError(
             f"Unknown normalization '{method}'. Available: "
-            "'none', 'zscore'/'fwn', 'robust', '01scale', "
+            "'none', 'zscore', 'robust', '01scale', "
             "'zscore_sample', 'robust_sample', 'minmax_sample', 'l2'/'euclidean'"
         )
 
@@ -371,7 +371,7 @@ class Map:
         data = data.astype(float, copy=True)
         p = self._norm_params
 
-        if method in ('zscore', 'fwn'):
+        if method == 'zscore':
             return (data - p['mean']) / p['std']
 
         if method == 'robust':

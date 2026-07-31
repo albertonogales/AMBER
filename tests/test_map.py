@@ -169,11 +169,9 @@ class TestNormalization:
         out = self._norm(medium_data, 'zscore')
         np.testing.assert_allclose(out.std(axis=0), 1.0, atol=1e-10)
 
-    def test_fwn_alias_for_zscore(self, medium_data):
-        np.testing.assert_allclose(
-            self._norm(medium_data, 'fwn'),
-            self._norm(medium_data, 'zscore'),
-        )
+    def test_fwn_rejected(self, medium_data):
+        with pytest.raises(ValueError, match="Unknown normalization"):
+            self._norm(medium_data, 'fwn')
 
     def test_robust_finite(self, medium_data):
         out = self._norm(medium_data, 'robust')

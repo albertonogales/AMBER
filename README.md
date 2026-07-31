@@ -29,7 +29,7 @@ It covers the full workflow — data normalisation, map training, classification
 
 ### Normalisation strategies
 
-`zscore` (fwn) · `robust` · `01scale` · `zscore_sample` · `robust_sample` · `minmax_sample` · `l2` (euclidean) · `none`
+`zscore` · `robust` · `01scale` · `zscore_sample` · `robust_sample` · `minmax_sample` · `l2` (euclidean) · `none`
 
 ---
 

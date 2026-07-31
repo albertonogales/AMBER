@@ -82,7 +82,7 @@ class TestFullWorkflow:
 
     def test_all_normalizations_complete_pipeline(self):
         data = np.abs(RNG.standard_normal((40, 5))) + 0.1  # positive for stability
-        methods = ['none', 'zscore', 'fwn', 'robust', '01scale',
+        methods = ['none', 'zscore', 'robust', '01scale',
                    'zscore_sample', 'robust_sample', 'minmax_sample', 'l2']
         for method in methods:
             som = AMBER.Map(data=data, size=3, period=10, normalization=method)

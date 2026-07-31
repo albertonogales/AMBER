@@ -103,7 +103,7 @@ Normalisation strategies
      - Effect
    * - ``none``
      - No normalisation
-   * - ``zscore`` / ``fwn``
+   * - ``zscore``
      - Per-feature zero mean, unit variance
    * - ``robust``
      - Per-feature median/IQR scaling — robust to outliers

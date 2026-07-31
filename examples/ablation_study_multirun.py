@@ -116,7 +116,7 @@ print("\n" + "=" * 64)
 print("Experiment B — Normalisation strategies")
 print("=" * 64)
 
-NORMS = ['none', 'zscore', 'fwn', 'robust', '01scale',
+NORMS = ['none', 'zscore', 'robust', '01scale',
          'zscore_sample', 'robust_sample', 'minmax_sample', 'l2']
 
 records_B = []
