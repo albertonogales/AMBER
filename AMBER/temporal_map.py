@@ -126,10 +126,91 @@ class TemporalMap(Map):
         return bmu_dist, bmu_pos, second_bmu_dist, second_bmu_pos
 
     def train(self, data: np.ndarray) -> None:
-        """Train on temporally ordered data; resets context so calls are independent."""
+        """Train on a single temporally ordered sequence; resets context before training."""
         self._check_temporal_assumptions(data, self._confirm)
         self.reset_context()
         super().train(data)
+
+    def train_sequential(self,
+                         recordings: list,
+                         n_passes: int = 10,
+                         shuffle_recordings: bool = True) -> None:
+        """
+        Train RSOM on multiple independent sequences with context reset between them.
+
+        This is the correct training procedure for multi-session temporal data
+        (e.g., multiple nights of EEG, multiple sensor runs).  The context vector
+        is zeroed at the start of every recording so that temporal memory does not
+        bleed across sessions.  Within each recording, samples are presented in
+        their original (temporal) order.
+
+        :param recordings: list of 2-D arrays of shape (n_epochs, n_features).
+                           All arrays must share the same feature dimension.
+        :param n_passes: number of full passes over the complete set of recordings.
+        :param shuffle_recordings: if True (default), shuffle the order in which
+                                   recordings are visited each pass, while preserving
+                                   within-recording temporal order.
+        """
+        if not recordings:
+            raise ValueError("recordings must be a non-empty list of arrays.")
+        n_feat = recordings[0].shape[1]
+        for i, rec in enumerate(recordings):
+            if rec.ndim != 2 or rec.shape[1] != n_feat:
+                raise ValueError(
+                    f"recordings[{i}] has shape {rec.shape}; "
+                    f"expected (n_epochs, {n_feat})."
+                )
+            self._check_temporal_assumptions(rec, self._confirm)
+
+        if not self._confirm:
+            raise ValueError(
+                "Set confirm=True on the TemporalMap constructor to acknowledge "
+                "that each recording is a single continuous temporally ordered sequence."
+            )
+
+        all_data = np.concatenate(recordings, axis=0)
+        self.num_data = all_data.shape[0]
+        self.input_data_dimension = n_feat
+
+        # Normalise using statistics from all recordings combined.
+        all_norm = self._Map__normalize(all_data, method=self.normalization)  # type: ignore[attr-defined]
+        self.weights = self._Map__init_weights(data=all_norm, method=self.weights_init)  # type: ignore[attr-defined]
+
+        # Split back into per-recording normalised arrays.
+        recordings_norm, offset = [], 0
+        for rec in recordings:
+            n = len(rec)
+            recordings_norm.append(all_norm[offset:offset + n])
+            offset += n
+
+        total_steps = self.num_data * n_passes
+        self.period  = total_steps
+        step = 0
+
+        logger.info(
+            f"SEQUENTIAL TRAINING: {n_passes} passes × {len(recordings)} recordings "
+            f"= {total_steps} steps."
+        )
+
+        for _pass in range(n_passes):
+            order = (self._rng.permutation(len(recordings))
+                     if shuffle_recordings
+                     else range(len(recordings)))
+            for idx in order:
+                self.reset_context()
+                for pattern in recordings_norm[idx]:
+                    bmu = self.calculate_bmu(pattern)
+                    eta = self.variation_learning_rate(
+                        self.initial_lr, step + 1, total_steps, mode=self.lr_decay)
+                    v_final = 1 if self.use_decay else 0
+                    v = self.variation_neighbourhood(
+                        self.neighbourhood, step + 1, total_steps, v_final,
+                        mode=self.lr_decay)
+                    self._Map__adjust_weights(v, eta, bmu[1], pattern)  # type: ignore[attr-defined]
+                    step += 1
+
+        self._Map__trained = True  # type: ignore[attr-defined]
+        logger.info("FINISHED (sequential multi-recording training).")
 
     @staticmethod
     def _check_temporal_assumptions(data: np.ndarray, confirmed: bool) -> None:

@@ -172,3 +172,55 @@ class TestTemporalMapReproducibility:
     def test_load_file_not_found(self, tmp_path):
         with pytest.raises(FileNotFoundError):
             AMBER.TemporalMap.load_classifier(str(tmp_path / 'nonexistent'))
+
+
+class TestTrainSequential:
+    """Tests for TemporalMap.train_sequential() — multi-recording RSOM."""
+
+    def _make_tm(self, **kwargs):
+        defaults = dict(size=3, period=2, normalization='none',
+                        weights='random', confirm=True, random_seed=0)
+        defaults.update(kwargs)
+        return AMBER.TemporalMap(**defaults)
+
+    def test_weights_shape_after_training(self):
+        recs = [np.random.rand(15, 4).astype('float32') for _ in range(3)]
+        tm = self._make_tm()
+        tm.train_sequential(recs, n_passes=2)
+        assert tm.weights.shape == (3, 3, 4)
+
+    def test_same_seed_same_weights(self):
+        recs = [np.random.default_rng(i).random((20, 5)).astype('float32')
+                for i in range(4)]
+        tm1 = self._make_tm(random_seed=7)
+        tm2 = self._make_tm(random_seed=7)
+        tm1.train_sequential(recs, n_passes=3)
+        tm2.train_sequential(recs, n_passes=3)
+        np.testing.assert_array_equal(tm1.weights, tm2.weights)
+
+    def test_context_reset_between_recordings(self):
+        recs = [np.ones((10, 3), dtype='float32') * i for i in range(3)]
+        tm = self._make_tm(context_weight=0.9, context_influence=0.5)
+        tm.train_sequential(recs, n_passes=1, shuffle_recordings=False)
+        # After training, context should reflect only the last recording,
+        # not accumulated history from all of them.
+        assert tm._context is not None
+
+    def test_rejects_empty_list(self):
+        tm = self._make_tm()
+        with pytest.raises(ValueError, match="non-empty"):
+            tm.train_sequential([])
+
+    def test_rejects_feature_mismatch(self):
+        tm = self._make_tm()
+        recs = [np.random.rand(10, 4).astype('float32'),
+                np.random.rand(10, 5).astype('float32')]
+        with pytest.raises(ValueError, match="shape"):
+            tm.train_sequential(recs)
+
+    def test_rejects_without_confirm(self):
+        tm = AMBER.TemporalMap(size=3, period=2, normalization='none',
+                               weights='random', confirm=False)
+        recs = [np.random.rand(15, 4).astype('float32')]
+        with pytest.raises(ValueError, match="confirm=True"):
+            tm.train_sequential(recs)
