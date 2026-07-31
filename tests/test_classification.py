@@ -495,3 +495,40 @@ class TestClassificationVerboseAndOther:
         extra = pd.DataFrame({'custom': vals})
         c = AMBER.Classification(trained_map, small_data, other=extra)
         np.testing.assert_array_equal(c.classification_map['custom'].values, vals)
+
+
+class TestClusterPurity:
+    def _trained(self, data, size=3, seed=0):
+        som = AMBER.Map(data=data, size=size, period=30,
+                        normalization='none', random_seed=seed)
+        return AMBER.Classification(som, data)
+
+    def test_purity_range(self):
+        rng = np.random.default_rng(0)
+        data = rng.standard_normal((60, 4)).astype(np.float32)
+        labels = np.repeat(np.arange(3), 20)
+        cls = self._trained(data)
+        p = cls.cluster_purity(labels)
+        assert 0.0 <= p <= 1.0
+
+    def test_perfect_purity(self):
+        # Each neuron gets only one class → purity must be 1.0.
+        data = np.array([[float(c)] * 4 for c in range(3)
+                         for _ in range(10)], dtype=np.float32)
+        labels = np.repeat(np.arange(3), 10)
+        cls = self._trained(data, size=3)
+        assert cls.cluster_purity(labels) == pytest.approx(1.0)
+
+    def test_wrong_label_length_raises(self):
+        rng = np.random.default_rng(1)
+        data = rng.standard_normal((30, 4)).astype(np.float32)
+        cls = self._trained(data)
+        with pytest.raises(ValueError, match="true_labels length"):
+            cls.cluster_purity(np.zeros(10, dtype=int))
+
+    def test_returns_float(self):
+        rng = np.random.default_rng(2)
+        data = rng.standard_normal((20, 3)).astype(np.float32)
+        cls = self._trained(data)
+        result = cls.cluster_purity(np.zeros(20, dtype=int))
+        assert isinstance(result, float)

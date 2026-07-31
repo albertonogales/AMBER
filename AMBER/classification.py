@@ -5,6 +5,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+from scipy.stats import mode as _scipy_mode
 from tqdm.auto import tqdm
 
 from .distances import SIGNAL_DISTANCE_SCALAR, euclidean_distance
@@ -60,6 +61,7 @@ class Classification:
             logger.debug("\n\nTags: \n" + str(self.classification_labels))
             logger.debug("\n\nClassification data: \n" + str(self.classification_data))
 
+        self._k = som.map_size
         self.activations_map = np.zeros((som.map_size, som.map_size), dtype=int)
         self.distances_map = np.zeros((som.map_size, som.map_size), dtype=float)
         self.topological_map = np.zeros((som.map_size, som.map_size), dtype=float)
@@ -178,3 +180,35 @@ class Classification:
                 u[2*i, 2*j] = np.mean(neighbours) if neighbours else 0.0
 
         self.umatriz = u
+
+    def cluster_purity(self, true_labels: np.ndarray) -> float:
+        """Cluster purity: fraction of samples assigned to their neuron's majority class.
+
+        Each neuron is labelled with the most frequent true class among its assigned
+        samples (majority vote).  Purity is the proportion of samples whose true label
+        matches their neuron's majority label.
+
+        :param true_labels: 1-D array of ground-truth class labels, one per sample,
+                            in the same order as the data passed to Classification.
+        :return: purity in [0, 1]; higher is better.
+        """
+        true_labels = np.asarray(true_labels)
+        if true_labels.shape[0] != self.classification_data.shape[0]:
+            raise ValueError(
+                f"true_labels length ({true_labels.shape[0]}) must match the number "
+                f"of classified samples ({self.classification_data.shape[0]})."
+            )
+
+        bmu_flat = (self.classification_map['x'].to_numpy(dtype=int) * self._k
+                    + self.classification_map['y'].to_numpy(dtype=int))
+
+        neuron_labels: dict = {}
+        for b, lbl in zip(bmu_flat, true_labels):
+            neuron_labels.setdefault(b, []).append(lbl)
+
+        majority = {b: int(_scipy_mode(v, keepdims=False).mode)
+                    for b, v in neuron_labels.items()}
+
+        correct = sum(majority.get(b, -1) == lbl
+                      for b, lbl in zip(bmu_flat, true_labels))
+        return correct / len(true_labels)
