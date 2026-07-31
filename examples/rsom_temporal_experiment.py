@@ -149,9 +149,8 @@ def evaluate(tm, recordings_norm, recordings_y, alpha, beta):
     purity = float(np.mean(pred == y_all))
     nmi    = float(normalized_mutual_info_score(y_all, bmus))
 
-    rows_  = bmus // k; cols_ = bmus % k
-    jumps  = np.maximum(np.abs(np.diff(rows_)), np.abs(np.diff(cols_)))
-    tc     = float(np.sum(jumps <= 1) / len(jumps))
+    cls_obj = AMBER.Classification(tm, np.concatenate(recordings_norm))
+    tc = AMBER.TemporalAnalysis(cls_obj).temporal_coherence
 
     return dict(QE=qe, TE=te, Purity=purity, NMI=nmi, TC=tc, bmus=bmus)
 

@@ -152,7 +152,7 @@ AMBER has been applied to and includes example notebooks for:
 
 ```bash
 pip install -r requirements-dev.txt
-pytest               # 405 tests, ~99 % coverage
+pytest               # 412 tests, ~99 % coverage
 ```
 
 A coverage HTML report is written to `coverage_html/`.

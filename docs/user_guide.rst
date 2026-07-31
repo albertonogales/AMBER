@@ -209,10 +209,15 @@ where α is ``context_weight`` (memory decay) and β is ``context_influence``
    ta   = AMBER.TemporalAnalysis(tcls)
 
    print(ta.summary())
-   # stability          — fraction of consecutive identical BMUs
-   # mean_path_length   — mean Euclidean grid distance per step
-   # transition_matrix  — (k², k²) raw transition counts
-   # dwell_times()      — dict of {(row, col): mean_dwell}
+   # stability             — fraction of consecutive identical BMUs (jump = 0)
+   # temporal_coherence    — fraction of steps with Chebyshev jump ≤ 1 (same or adjacent BMU)
+   # mean_path_length      — mean Euclidean grid distance per step
+   # mean_chebyshev_jump   — mean Chebyshev distance between consecutive BMU positions
+   # transition_matrix     — (k², k²) raw transition counts
+   # dwell_times()         — dict of {(row, col): mean_dwell}
+
+   # stability ≤ temporal_coherence always holds:
+   # stability counts only zero-jump steps; temporal_coherence also includes one-step moves.
 
    # Most frequent transitions
    for tr in ta.most_frequent_transitions(top_k=5):
